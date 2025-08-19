@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
 class TradeDashboardController extends Controller
 {
     /**
-     * Display the trade data dashboard
+     * Display the trade data dashboard (Pustik style)
      */
     public function index(Request $request)
     {
@@ -37,15 +37,15 @@ class TradeDashboardController extends Controller
             });
         }
         
-        // Order by total value descending
+        // Order by total value descending (show highest imports first)
         $query->orderByDesc('total_value');
         
         $tradeData = $query->paginate($perPage);
         
-        // Get summary statistics
+        // Get summary statistics for Pustik-style cards
         $summaryStats = $this->getSummaryStatistics();
         
-        // Get top sectors
+        // Get top sectors for additional insights
         $topSectors = $this->getTopSectors();
         
         return view('dashboard.trade-data', compact(
@@ -94,7 +94,7 @@ class TradeDashboardController extends Controller
     }
     
     /**
-     * Export trade data to CSV
+     * Export trade data to CSV (Pustik style with Indonesian headers)
      */
     public function export(Request $request)
     {
@@ -120,25 +120,28 @@ class TradeDashboardController extends Controller
         
         $data = $query->orderByDesc(DB::raw('SUM(jumlah)'))->get();
         
-        $filename = 'indonesia_trade_data_' . date('Y-m-d') . '.csv';
+        $filename = 'data_perdagangan_indonesia_' . date('Y-m-d') . '.csv';
         
         $headers = [
-            'Content-Type' => 'text/csv',
+            'Content-Type' => 'text/csv; charset=UTF-8',
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
         ];
         
         $callback = function() use ($data) {
             $file = fopen('php://output', 'w');
             
-            // CSV headers
+            // Add BOM for proper UTF-8 encoding in Excel
+            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
+            
+            // Indonesian CSV headers
             fputcsv($file, [
-                'HS Code',
-                'Product Label', 
-                'Imported Value 2020',
-                'Imported Value 2021',
-                'Imported Value 2022', 
-                'Imported Value 2023',
-                'Imported Value 2024'
+                'Kode HS',
+                'Label Produk', 
+                'Nilai Impor 2020 (USD ribu)',
+                'Nilai Impor 2021 (USD ribu)',
+                'Nilai Impor 2022 (USD ribu)', 
+                'Nilai Impor 2023 (USD ribu)',
+                'Nilai Impor 2024 (USD ribu)'
             ]);
             
             // CSV data

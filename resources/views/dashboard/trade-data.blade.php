@@ -3,256 +3,246 @@
 @section('title', 'Indonesia Trade Data Dashboard')
 
 @section('content')
-<div class="row">
-    <!-- Summary Statistics -->
-    <div class="col-12 mb-4">
-        <div class="row">
-            <div class="col-md-3">
-                <div class="stat-card">
-                    <h3>{{ number_format($summaryStats['total_records']) }}</h3>
-                    <p><i class="bi bi-database me-1"></i> Total Records</p>
-                </div>
+<div class="container mx-auto px-4">
+    <!-- Trade Data Ticker (News-style sliding header) -->
+    @include('components.trade-ticker')
+
+    <!-- Summary Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stat-card blue">
+                <h3>{{ number_format($summaryStats['total_records']) }}</h3>
+                <p><i class="fas fa-database me-1"></i> Total Records</p>
             </div>
-            <div class="col-md-3">
-                <div class="stat-card">
-                    <h3>${{ number_format($summaryStats['total_value_2024'] / 1000000, 1) }}B</h3>
-                    <p><i class="bi bi-graph-up me-1"></i> 2024 Import Value</p>
-                </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card green">
+                <h3>${{ number_format($summaryStats['total_value_2024'] / 1000000, 1) }}B</h3>
+                <p><i class="fas fa-chart-line me-1"></i> Nilai Impor 2024</p>
             </div>
-            <div class="col-md-3">
-                <div class="stat-card">
-                    <h3>{{ number_format($summaryStats['total_hs_codes']) }}</h3>
-                    <p><i class="bi bi-tags me-1"></i> HS Codes</p>
-                </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card purple">
+                <h3>{{ number_format($summaryStats['total_hs_codes']) }}</h3>
+                <p><i class="fas fa-tags me-1"></i> Kode HS</p>
             </div>
-            <div class="col-md-3">
-                <div class="stat-card">
-                    <h3>{{ $summaryStats['last_update']?->diffForHumans() ?? 'N/A' }}</h3>
-                    <p><i class="bi bi-clock me-1"></i> Last Updated</p>
-                </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card yellow">
+                <h3>{{ $summaryStats['last_update']?->diffForHumans() ?? 'N/A' }}</h3>
+                <p><i class="fas fa-clock me-1"></i> Terakhir Update</p>
             </div>
         </div>
     </div>
 
     <!-- Search and Filters -->
-    <div class="col-12">
-        <div class="search-container">
-            <form method="GET" action="{{ route('dashboard.trade-data') }}" class="row g-3 align-items-center">
-                <div class="col-md-4">
-                    <label for="search" class="form-label">Search Products or HS Codes</label>
-                    <div class="input-group">
-                        <span class="input-group-text">
-                            <i class="bi bi-search"></i>
-                        </span>
-                        <input type="text" 
-                               class="form-control" 
-                               id="search" 
-                               name="search" 
-                               value="{{ $search }}"
-                               placeholder="Enter HS code or product name...">
-                    </div>
+    <div class="search-container">
+        <form method="GET" action="{{ route('dashboard.trade-data') }}" class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label for="search" class="form-label fw-medium">Cari Produk atau Kode HS</label>
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="fas fa-search"></i>
+                    </span>
+                    <input type="text" 
+                           class="form-control form-control-lg" 
+                           id="search" 
+                           name="search" 
+                           value="{{ $search }}"
+                           placeholder="Masukkan kode HS atau nama produk...">
                 </div>
-                
-                <div class="col-md-2">
-                    <label for="per_page" class="form-label">Rows per page</label>
-                    <select class="form-select" name="per_page" id="per_page" onchange="this.form.submit()">
-                        <option value="25" {{ $perPage == 25 ? 'selected' : '' }}>25 per page</option>
-                        <option value="50" {{ $perPage == 50 ? 'selected' : '' }}>50 per page</option>
-                        <option value="100" {{ $perPage == 100 ? 'selected' : '' }}>100 per page</option>
-                        <option value="250" {{ $perPage == 250 ? 'selected' : '' }}>250 per page</option>
-                    </select>
-                </div>
-                
-                <div class="col-md-4">
-                    <label class="form-label">&nbsp;</label>
-                    <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-search me-1"></i> Search
-                        </button>
-                        
-                        @if($search)
-                            <a href="{{ route('dashboard.trade-data') }}" class="btn btn-outline-secondary">
-                                <i class="bi bi-x-circle me-1"></i> Clear
-                            </a>
-                        @endif
-                        
-                        <a href="{{ route('dashboard.export', ['search' => $search]) }}" 
-                           class="btn btn-outline-primary">
-                            <i class="bi bi-download me-1"></i> Export CSV
+            </div>
+            
+            <div class="col-md-2">
+                <label for="per_page" class="form-label fw-medium">Baris per halaman</label>
+                <select class="form-select" name="per_page" id="per_page" onchange="this.form.submit()">
+                    <option value="25" {{ $perPage == 25 ? 'selected' : '' }}>25 per halaman</option>
+                    <option value="50" {{ $perPage == 50 ? 'selected' : '' }}>50 per halaman</option>
+                    <option value="100" {{ $perPage == 100 ? 'selected' : '' }}>100 per halaman</option>
+                    <option value="250" {{ $perPage == 250 ? 'selected' : '' }}>250 per halaman</option>
+                </select>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search me-1"></i> Cari
+                    </button>
+                    
+                    @if($search)
+                        <a href="{{ route('dashboard.trade-data') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-times me-1"></i> Reset
                         </a>
-                    </div>
+                    @endif
+                    
+                    <a href="{{ route('dashboard.export', ['search' => $search]) }}" 
+                       class="btn btn-outline-primary">
+                        <i class="fas fa-download me-1"></i> Export CSV
+                    </a>
+                    
+                    <button type="button" class="btn btn-outline-success" onclick="refreshTicker()">
+                        <i class="fas fa-sync me-1"></i> Refresh Ticker
+                    </button>
                 </div>
-                
-                <div class="col-md-2 text-end">
-                    <label class="form-label">Total Results</label>
-                    <p class="mb-0 fw-bold text-primary fs-5">
-                        {{ number_format($tradeData->total()) }}
-                    </p>
+            </div>
+            
+            <div class="col-md-2 text-end">
+                <div class="fw-bold text-primary" style="font-size: 1.1rem;">
+                    {{ number_format($tradeData->total()) }} hasil
                 </div>
-            </form>
-        </div>
+            </div>
+        </form>
     </div>
 
     <!-- Main Data Table -->
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <div class="row align-items-center">
-                    <div class="col">
-                        <h5 class="mb-0">
-                            <i class="bi bi-table me-2"></i>
-                            Indonesia Import Data by Product (HS Code Level)
-                        </h5>
-                        <small class="opacity-75">Unit: US Dollar thousand</small>
-                    </div>
-                    <div class="col-auto">
-                        <span class="badge bg-light text-dark">
-                            {{ $tradeData->firstItem() ?? 0 }} - {{ $tradeData->lastItem() ?? 0 }} 
-                            of {{ number_format($tradeData->total()) }}
-                        </span>
-                    </div>
+    <div class="card">
+        <div class="card-header">
+            <div class="row align-items-center">
+                <div class="col">
+                    <h5 class="mb-1 fw-bold">
+                        <i class="fas fa-table me-2"></i>
+                        Data Impor Indonesia berdasarkan Produk (Level Kode HS)
+                    </h5>
+                    <small class="opacity-75">Unit: US Dollar ribu</small>
+                </div>
+                <div class="col-auto">
+                    <span class="badge bg-light text-dark">
+                        {{ $tradeData->firstItem() ?? 0 }} - {{ $tradeData->lastItem() ?? 0 }} 
+                        dari {{ number_format($tradeData->total()) }}
+                    </span>
                 </div>
             </div>
-            
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0">
-                        <thead>
-                            <tr>
-                                <th style="width: 80px;">HS4</th>
-                                <th style="width: 100px;">Code</th>
-                                <th style="min-width: 300px;">Product Label</th>
-                                <th style="width: 120px;" class="text-end">Imported value<br>in 2020</th>
-                                <th style="width: 120px;" class="text-end">Imported value<br>in 2021</th>
-                                <th style="width: 120px;" class="text-end">Imported value<br>in 2022</th>
-                                <th style="width: 120px;" class="text-end">Imported value<br>in 2023</th>
-                                <th style="width: 120px;" class="text-end">Imported value<br>in 2024</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse($tradeData as $item)
-                                <tr>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-primary" 
-                                                onclick="copyToClipboard('{{ $item->kode_hs }}')"
-                                                title="Click to copy HS code">
-                                            <i class="bi bi-plus-square"></i>
-                                        </button>
-                                    </td>
-                                    <td>
-                                        <span class="hs-code">{{ $item->kode_hs }}</span>
-                                    </td>
-                                    <td>
-                                        <div class="product-label">
-                                            {{ Str::limit($item->product_label, 80) }}
-                                            @if(strlen($item->product_label) > 80)
-                                                <span class="text-muted">...</span>
-                                            @endif
-                                        </div>
-                                    </td>
-                                    <td class="value-cell">
-                                        {{ $item->value_2020 > 0 ? number_format($item->value_2020) : '-' }}
-                                    </td>
-                                    <td class="value-cell">
-                                        {{ $item->value_2021 > 0 ? number_format($item->value_2021) : '-' }}
-                                    </td>
-                                    <td class="value-cell">
-                                        {{ $item->value_2022 > 0 ? number_format($item->value_2022) : '-' }}
-                                    </td>
-                                    <td class="value-cell">
-                                        {{ $item->value_2023 > 0 ? number_format($item->value_2023) : '-' }}
-                                    </td>
-                                    <td class="value-cell">
-                                        <strong class="text-primary">
-                                            {{ $item->value_2024 > 0 ? number_format($item->value_2024) : '-' }}
-                                        </strong>
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="8" class="text-center py-5">
-                                        <div class="text-muted">
-                                            <i class="bi bi-inbox display-1"></i>
-                                            <h5 class="mt-3">No trade data found</h5>
-                                            <p>Try adjusting your search criteria or check if the scraper has been run.</p>
-                                            
-                                            @if(empty($search))
-                                                <a href="{{ url('/') }}" class="btn btn-primary">
-                                                    <i class="bi bi-arrow-clockwise me-1"></i> Run Scraper
-                                                </a>
-                                            @endif
-                                        </div>
-                                    </td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            
-            @if($tradeData->hasPages())
-                <div class="card-footer bg-transparent">
-                    <div class="row align-items-center">
-                        <div class="col-md-6">
-                            <p class="text-muted mb-0">
-                                Showing {{ $tradeData->firstItem() ?? 0 }} to {{ $tradeData->lastItem() ?? 0 }} 
-                                of {{ number_format($tradeData->total()) }} results
-                            </p>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="d-flex justify-content-end">
-                                {{ $tradeData->appends(request()->query())->links('pagination::bootstrap-4') }}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            @endif
         </div>
+        
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th style="width: 80px;">HS4</th>
+                            <th style="width: 100px;">Kode</th>
+                            <th style="min-width: 300px;">Label Produk</th>
+                            <th style="width: 120px;" class="text-end">Nilai impor<br>tahun 2020</th>
+                            <th style="width: 120px;" class="text-end">Nilai impor<br>tahun 2021</th>
+                            <th style="width: 120px;" class="text-end">Nilai impor<br>tahun 2022</th>
+                            <th style="width: 120px;" class="text-end">Nilai impor<br>tahun 2023</th>
+                            <th style="width: 120px;" class="text-end">Nilai impor<br>tahun 2024</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($tradeData as $item)
+                            <tr>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary" 
+                                            onclick="copyToClipboard('{{ $item->kode_hs }}')"
+                                            title="Klik untuk copy kode HS">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </td>
+                                <td>
+                                    <span class="hs-code">{{ $item->kode_hs }}</span>
+                                </td>
+                                <td>
+                                    <div class="product-label">
+                                        {{ Str::limit($item->product_label, 80) }}
+                                        @if(strlen($item->product_label) > 80)
+                                            <span class="text-muted">...</span>
+                                        @endif
+                                    </div>
+                                </td>
+                                <td class="value-cell">
+                                    {{ $item->value_2020 > 0 ? number_format($item->value_2020) : '-' }}
+                                </td>
+                                <td class="value-cell">
+                                    {{ $item->value_2021 > 0 ? number_format($item->value_2021) : '-' }}
+                                </td>
+                                <td class="value-cell">
+                                    {{ $item->value_2022 > 0 ? number_format($item->value_2022) : '-' }}
+                                </td>
+                                <td class="value-cell">
+                                    {{ $item->value_2023 > 0 ? number_format($item->value_2023) : '-' }}
+                                </td>
+                                <td class="value-cell">
+                                    <strong style="color: var(--pustik-primary);">
+                                        {{ $item->value_2024 > 0 ? number_format($item->value_2024) : '-' }}
+                                    </strong>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="8" class="text-center py-5">
+                                    <div class="text-muted">
+                                        <i class="fas fa-inbox display-1"></i>
+                                        <h5 class="mt-3">Tidak ada data perdagangan ditemukan</h5>
+                                        <p>Coba sesuaikan kriteria pencarian atau pastikan scraper sudah dijalankan.</p>
+                                        
+                                        @if(empty($search))
+                                            <a href="{{ url('/') }}" class="btn btn-primary mt-2">
+                                                <i class="fas fa-sync me-1"></i> Jalankan Scraper
+                                            </a>
+                                        @endif
+                                    </div>
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        @if($tradeData->hasPages())
+            <div class="card-footer bg-transparent">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <p class="text-muted mb-0">
+                            Menampilkan {{ $tradeData->firstItem() ?? 0 }} sampai {{ $tradeData->lastItem() ?? 0 }} 
+                            dari {{ number_format($tradeData->total()) }} hasil
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-flex justify-content-end">
+                            {{ $tradeData->appends(request()->query())->links('pagination::bootstrap-4') }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endif
     </div>
 
     <!-- Top Sectors Summary -->
     @if($topSectors->count() > 0)
-        <div class="col-12 mt-4">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="bi bi-pie-chart me-2"></i>
-                        Top Import Sectors (2024)
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        @foreach($topSectors->take(5) as $sector)
-                            <div class="col-md-4 col-lg-2 mb-3">
-                                <div class="border rounded p-3 h-100">
-                                    <div class="d-flex align-items-center mb-2">
-                                        <span class="badge bg-primary me-2">{{ $sector->sector_code }}</span>
-                                        <small class="text-muted">HS {{ $sector->sector_code }}</small>
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0 fw-bold">
+                            <i class="fas fa-chart-pie me-2"></i>
+                            Top Sektor Impor (2024)
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            @foreach($topSectors->take(5) as $index => $sector)
+                                <div class="col-md-4 col-lg-2 mb-3">
+                                    <div class="sector-card">
+                                        <div class="d-flex align-items-center mb-2">
+                                            <span class="badge bg-primary me-2">{{ $sector->sector_code }}</span>
+                                            <small class="text-muted">HS {{ $sector->sector_code }}</small>
+                                        </div>
+                                        <p class="small mb-1 fw-medium">{{ Str::limit($sector->sector_name, 40) }}</p>
+                                        <h6 class="mb-0" style="color: var(--pustik-primary);">
+                                            ${{ number_format($sector->total_value / 1000000, 1) }}B
+                                        </h6>
+                                        <small class="text-muted">{{ number_format($sector->record_count) }} produk</small>
                                     </div>
-                                    <p class="small mb-1">{{ Str::limit($sector->sector_name, 40) }}</p>
-                                    <h6 class="text-primary mb-0">${{ number_format($sector->total_value / 1000000, 1) }}B</h6>
                                 </div>
-                            </div>
-                        @endforeach
+                            @endforeach
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     @endif
-</div>
-
-<!-- Toast Notification -->
-<div class="position-fixed top-0 end-0 p-3" style="z-index: 1050">
-    <div id="copyToast" class="toast" role="alert">
-        <div class="toast-header">
-            <i class="bi bi-check-circle text-success me-2"></i>
-            <strong class="me-auto">Success</strong>
-            <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
-        </div>
-        <div class="toast-body">
-            HS Code copied to clipboard!
-        </div>
-    </div>
 </div>
 @endsection
 
@@ -267,35 +257,39 @@
         position: fixed;
         top: 20px;
         right: 20px;
-        background: #198754;
+        background: var(--pustik-primary);
         color: white;
         padding: 12px 20px;
-        border-radius: 6px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        border-radius: 0.375rem;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
         z-index: 1060;
-        animation: slideIn 0.3s ease;
+        transform: translateX(100%);
+        opacity: 0;
+        transition: all 0.3s ease;
     }
     
-    @keyframes slideIn {
-        from {
-            transform: translateX(100%);
-            opacity: 0;
-        }
-        to {
-            transform: translateX(0);
-            opacity: 1;
-        }
+    .toast-notification.show {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    
+    .sector-card:hover {
+        border-color: var(--pustik-primary);
     }
     
     .btn-outline-primary:hover {
         transform: translateY(-1px);
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 8px rgba(30, 64, 175, 0.2);
     }
     
-    tbody tr:hover {
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        transform: translateY(-1px);
-        transition: all 0.2s ease;
+    tbody tr:hover .hs-code {
+        background-color: var(--pustik-primary);
+        color: white;
+    }
+    
+    .form-label {
+        color: var(--pustik-gray-800);
+        font-weight: 500;
     }
 </style>
 @endpush
@@ -305,12 +299,30 @@
     // Enhanced copy to clipboard with toast
     function copyToClipboard(text) {
         navigator.clipboard.writeText(text).then(function() {
-            const toastEl = document.getElementById('copyToast');
-            const toast = new bootstrap.Toast(toastEl);
-            toast.show();
+            showToast('Kode HS berhasil disalin ke clipboard!');
         }).catch(function(err) {
             console.error('Failed to copy: ', err);
+            showToast('Gagal menyalin ke clipboard', 'error');
         });
+    }
+    
+    // Refresh ticker manually
+    function refreshTicker() {
+        if (window.tradeTicker) {
+            showToast('Memperbarui data ticker...', 'info');
+            
+            fetch('/api/ticker/refresh', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        window.tradeTicker.loadLatestData();
+                        showToast('Data ticker berhasil diperbarui!', 'success');
+                    }
+                })
+                .catch(error => {
+                    showToast('Gagal memperbarui ticker', 'error');
+                });
+        }
     }
     
     // Add smooth scrolling for pagination
@@ -325,6 +337,39 @@
                 }, 100);
             });
         });
+        
+        // Add search placeholder animation
+        const searchInput = document.getElementById('search');
+        if (searchInput) {
+            const placeholders = [
+                'Masukkan kode HS atau nama produk...',
+                'Contoh: 27 untuk bahan bakar mineral...',
+                'Contoh: Machinery untuk mesin...',
+                'Contoh: 84 untuk reaktor nuklir...'
+            ];
+            let currentIndex = 0;
+            
+            setInterval(() => {
+                if (!searchInput.value && document.activeElement !== searchInput) {
+                    searchInput.placeholder = placeholders[currentIndex];
+                    currentIndex = (currentIndex + 1) % placeholders.length;
+                }
+            }, 3000);
+        }
+        
+        // Add ticker style switching based on time
+        const hour = new Date().getHours();
+        if (hour >= 9 && hour <= 17) {
+            // Business hours - normal style
+            console.log('Business hours detected');
+        } else {
+            // Off hours - maybe different style
+            if (window.tradeTicker) {
+                setTimeout(() => {
+                    window.tradeTicker.setSpeed('slow');
+                }, 2000);
+            }
+        }
     });
 </script>
 @endpush
