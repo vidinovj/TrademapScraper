@@ -2,9 +2,18 @@
     "$schema": "https://json.schemastore.org/package.json",
     "private": true,
     "type": "module",
+    "name": "trademap-scraper",
+    "version": "1.0.0",
+    "description": "Puppeteer scraper for Trademap.org - Data Engineering Test",
+    "main": "storage/app/trademap_scraper.js",
     "scripts": {
         "build": "vite build",
-        "dev": "vite"
+        "dev": "vite",
+        "install-puppeteer": "npm install puppeteer",
+        "test-scraper": "node storage/app/trademap_scraper.js"
+    },
+    "dependencies": {
+        "puppeteer": "^21.0.0"
     },
     "devDependencies": {
         "@tailwindcss/vite": "^4.0.0",
@@ -13,5 +22,13 @@
         "laravel-vite-plugin": "^2.0.0",
         "tailwindcss": "^4.0.0",
         "vite": "^7.0.4"
-    }
+    },
+    "keywords": [
+        "puppeteer",
+        "scraping",
+        "trademap",
+        "data-engineering"
+    ],
+    "author": "Data Engineering Candidate",
+    "license": "MIT"
 }
