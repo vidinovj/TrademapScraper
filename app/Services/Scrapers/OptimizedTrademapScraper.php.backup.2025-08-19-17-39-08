@@ -1,0 +1,369 @@
+<?php
+// app/Services/Scrapers/OptimizedTrademapScraper.php
+
+namespace App\Services\Scrapers;
+
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
+use Exception;
+
+class OptimizedTrademapScraper
+{
+    protected string $baseUrl = 'https://www.trademap.org';
+    protected array $config;
+
+    public function __construct()
+    {
+        $this->config = [
+            'timeout' => 180,
+            'retries' => 3
+        ];
+    }
+
+    /**
+     * Scrape ALL years of Indonesia trade data in ONE request
+     * MUCH more efficient than the current 5-request approach
+     */
+    public function scrapeIndonesiaTradeData(): array
+    {
+        Log::info('Starting OPTIMIZED Trademap scraping for Indonesia trade data');
+        
+        try {
+            // Single request to get ALL years at once
+            $url = $this->buildTrademapUrl();
+            $allYearsData = $this->executePuppeteerScraping($url);
+            
+            return $this->processMultiYearData($allYearsData);
+            
+        } catch (Exception $e) {
+            Log::error("Error in optimized scraping: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Build Trademap URL (no year parameter needed - all years in one table)
+     */
+    protected function buildTrademapUrl(): string
+    {
+        $baseUrl = 'https://www.trademap.org/Product_SelCountry_TS.aspx';
+        
+        $params = [
+            'nvpm' => '1|360||||TOTAL|||2|1|1|1|2|1|1|1||1',
+            'dlang' => 'en'
+        ];
+        
+        $queryString = http_build_query($params);
+        $fullUrl = "{$baseUrl}?{$queryString}";
+        
+        Log::info("Built Trademap URL (all years): {$fullUrl}");
+        
+        return $fullUrl;
+    }
+
+    /**
+     * Execute SINGLE Puppeteer scraping for all years
+     */
+    protected function executePuppeteerScraping(string $url): ?string
+    {
+        try {
+            // Use the enhanced debug script
+            $puppeteerScript = base_path('storage/app/enhanced_debug_trademap_scraper.cjs');
+            
+            if (!file_exists($puppeteerScript)) {
+                Log::error("Enhanced debug Puppeteer script not found at: {$puppeteerScript}");
+                Log::info("Please save the enhanced debug script as 'enhanced_debug_trademap_scraper.cjs'");
+                return null;
+            }
+            
+            $command = sprintf(
+                'node %s %s 2>&1',
+                escapeshellarg($puppeteerScript),
+                escapeshellarg($url)
+            );
+            
+            Log::info("Executing ENHANCED DEBUG Puppeteer command");
+            Log::info("Command: {$command}");
+            
+            $output = [];
+            $returnCode = 0;
+            exec($command, $output, $returnCode);
+            
+            $fullOutput = implode("\n", $output);
+            Log::info("=== ENHANCED DEBUG PUPPETEER OUTPUT ===");
+            Log::info($fullOutput);
+            Log::info("=== END PUPPETEER OUTPUT ===");
+            
+            if ($returnCode !== 0) {
+                Log::error("Enhanced debug Puppeteer process failed with exit code: {$returnCode}");
+                return null;
+            }
+            
+            // Look for the temp file path in the output
+            $tempFile = null;
+            foreach ($output as $line) {
+                if (strpos($line, '/tmp/trademap_enhanced_debug_') !== false && strpos($line, '.json') !== false) {
+                    $tempFile = trim($line);
+                    break;
+                }
+            }
+            
+            if (!$tempFile || !file_exists($tempFile)) {
+                Log::error("No enhanced debug temp file created or found");
+                return null;
+            }
+            
+            // Read the JSON data from the file
+            $jsonData = file_get_contents($tempFile);
+            
+            // DON'T delete the temp file for debugging - keep it for manual inspection
+            Log::info("Enhanced debug temp file preserved at: {$tempFile}");
+            
+            if (empty($jsonData)) {
+                Log::error("Empty JSON data in enhanced debug temp file");
+                return null;
+            }
+            
+            // Validate JSON
+            $decoded = json_decode($jsonData, true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                Log::error("Invalid JSON from enhanced debug temp file: " . json_last_error_msg());
+                return null;
+            }
+            
+            Log::info("Successfully read " . count($decoded) . " enhanced debug records from temp file");
+            
+            // Log the first record structure for debugging
+            if (count($decoded) > 0) {
+                Log::info("=== FIRST RECORD STRUCTURE ===");
+                Log::info(json_encode($decoded[0], JSON_PRETTY_PRINT));
+                Log::info("=== END FIRST RECORD ===");
+            }
+            
+            return $jsonData;
+            
+        } catch (Exception $e) {
+            Log::error("Enhanced debug Puppeteer execution failed: " . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Process scraped multi-year data into individual year records
+     */
+    protected function processMultiYearData(?string $rawData): array
+    {
+        if (empty($rawData)) {
+            Log::error("Empty raw multi-year data");
+            return [];
+        }
+        
+        try {
+            $scrapedData = json_decode($rawData, true);
+            
+            if (!is_array($scrapedData)) {
+                Log::error("Invalid JSON data");
+                return [];
+            }
+            
+            Log::info("Processing " . count($scrapedData) . " multi-year records");
+            
+            // DEBUG: Log the first few records to see their structure
+            for ($i = 0; $i < min(3, count($scrapedData)); $i++) {
+                Log::info("DEBUG Record {$i}: " . json_encode($scrapedData[$i], JSON_PRETTY_PRINT));
+            }
+            
+            $processedData = [];
+            $years = [2020, 2021, 2022, 2023, 2024];
+            $debugStats = [
+                'total_records' => count($scrapedData),
+                'valid_hs_codes' => 0,
+                'valid_labels' => 0,
+                'year_values_found' => 0,
+                'year_values_above_zero' => 0,
+                'records_added' => 0
+            ];
+            
+            foreach ($scrapedData as $index => $item) {
+                $hsCode = $this->cleanHsCode($item['hsCode'] ?? '');
+                $productLabel = $this->cleanText($item['productLabel'] ?? '');
+                
+                // DEBUG: Log each record's basic info
+                Log::info("DEBUG Item {$index}: hsCode='{$hsCode}', label='{$productLabel}'");
+                
+                if (!empty($hsCode)) $debugStats['valid_hs_codes']++;
+                if (!empty($productLabel)) $debugStats['valid_labels']++;
+                
+                if (!empty($hsCode) && !empty($productLabel)) {
+                    // Create a record for EACH year from the single row
+                    foreach ($years as $year) {
+                        $yearKey = "value{$year}";
+                        $rawYearValue = $item[$yearKey] ?? '';
+                        $importedValue = $this->extractNumericValue($rawYearValue);
+                        
+                        // DEBUG: Log year processing
+                        Log::info("DEBUG Year {$year}: key='{$yearKey}', raw='{$rawYearValue}', parsed={$importedValue}");
+                        
+                        if (!empty($rawYearValue)) $debugStats['year_values_found']++;
+                        if ($importedValue > 0) $debugStats['year_values_above_zero']++;
+                        
+                        // RELAXED CONDITION: Add record even if value is 0 (for debugging)
+                        if ($importedValue >= 0) {  // Changed from > 0 to >= 0
+                            $processedData[] = [
+                                'negara' => 'Indonesia',
+                                'kode_hs' => $hsCode,
+                                'label' => $productLabel,
+                                'tahun' => $year,
+                                'jumlah' => $importedValue,
+                                'satuan' => 'USD thousands',
+                                'sumber_data' => 'Trademap',
+                                'scraped_at' => now()
+                            ];
+                            $debugStats['records_added']++;
+                        }
+                    }
+                }
+            }
+            
+            // DEBUG: Log final statistics
+            Log::info("DEBUG Final Stats: " . json_encode($debugStats, JSON_PRETTY_PRINT));
+            
+            Log::info("Processed into " . count($processedData) . " individual year records");
+            return $processedData;
+            
+        } catch (Exception $e) {
+            Log::error("Error processing multi-year data: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Utility methods
+     */
+    protected function cleanHsCode(string $hsCode): string
+    {
+        return preg_replace('/[^0-9.]/', '', $hsCode);
+    }
+
+    protected function cleanText(string $text): string
+    {
+        return trim(preg_replace('/\s+/', ' ', $text));
+    }
+
+    // Also debug the extractNumericValue function
+    protected function extractNumericValue(string $value): float
+    {
+        Log::info("DEBUG extractNumericValue: input='{$value}'");
+        
+        if (empty($value)) {
+            Log::info("DEBUG extractNumericValue: empty input, returning 0");
+            return 0.0;
+        }
+        
+        // Handle common number formats: 1,234.56 or 1.234,56 or 15,779,402
+        $cleaned = preg_replace('/[^\d.,]/', '', $value);
+        Log::info("DEBUG extractNumericValue: after removing non-digits='{$cleaned}'");
+        
+        if (empty($cleaned)) {
+            Log::info("DEBUG extractNumericValue: no digits found, returning 0");
+            return 0.0;
+        }
+        
+        // Handle comma as thousands separator (US format): 1,234,567.89
+        if (strpos($cleaned, ',') !== false && strpos($cleaned, '.') !== false) {
+            // Both comma and dot present - assume comma is thousands separator
+            $normalized = str_replace(',', '', $cleaned);
+        } 
+        // Handle comma as decimal separator (EU format): 1.234,56
+        else if (substr_count($cleaned, ',') === 1 && strpos($cleaned, '.') < strpos($cleaned, ',')) {
+            // Dot before comma - assume dot is thousands separator, comma is decimal
+            $normalized = str_replace('.', '', $cleaned);
+            $normalized = str_replace(',', '.', $normalized);
+        }
+        // Handle only commas (thousands separators): 1,234,567
+        else if (strpos($cleaned, ',') !== false && strpos($cleaned, '.') === false) {
+            $normalized = str_replace(',', '', $cleaned);
+        }
+        // Default case
+        else {
+            $normalized = $cleaned;
+        }
+        
+        $result = $normalized ? (float) $normalized : 0.0;
+        Log::info("DEBUG extractNumericValue: normalized='{$normalized}', result={$result}");
+        
+        return $result;
+}
+
+    /**
+     * Save data to database
+     */
+    public function saveToDatabase(array $tradeData): int
+    {
+        if (empty($tradeData)) {
+            return 0;
+        }
+        
+        try {
+            $chunks = array_chunk($tradeData, 1000);
+            $totalInserted = 0;
+            
+            DB::transaction(function () use ($chunks, &$totalInserted) {
+                foreach ($chunks as $chunk) {
+                    DB::table('tb_trade')->insert($chunk);
+                    $totalInserted += count($chunk);
+                }
+            });
+            
+            Log::info("Successfully saved {$totalInserted} records to database");
+            return $totalInserted;
+            
+        } catch (Exception $e) {
+            Log::error("Database save error: " . $e->getMessage());
+            return 0;
+        }
+    }
+
+    /**
+     * Main execution method - OPTIMIZED
+     */
+    public function execute(): array
+    {
+        $startTime = microtime(true);
+        
+        try {
+            $tradeData = $this->scrapeIndonesiaTradeData();
+            
+            if (empty($tradeData)) {
+                return [
+                    'success' => false,
+                    'message' => 'No data scraped',
+                    'records' => 0
+                ];
+            }
+            
+            $recordsSaved = $this->saveToDatabase($tradeData);
+            
+            $executionTime = microtime(true) - $startTime;
+            
+            return [
+                'success' => true,
+                'message' => 'OPTIMIZED scraping completed successfully',
+                'records_scraped' => count($tradeData),
+                'records_saved' => $recordsSaved,
+                'execution_time' => round($executionTime, 2),
+                'years_processed' => [2020, 2021, 2022, 2023, 2024],
+                'optimization' => 'Single request for all years (vs 5 separate requests)'
+            ];
+            
+        } catch (Exception $e) {
+            Log::error("Optimized scraping execution failed: " . $e->getMessage());
+            
+            return [
+                'success' => false,
+                'message' => 'Scraping failed: ' . $e->getMessage(),
+                'records' => 0
+            ];
+        }
+    }
+}
