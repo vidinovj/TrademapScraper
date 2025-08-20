@@ -136,7 +136,7 @@
                                     <i class="fas fa-cloud-upload-alt fa-4x text-muted mb-3"></i>
                                     <h5>Drag & Drop file CSV di sini</h5>
                                     <p class="text-muted mb-3">atau klik untuk browse file</p>
-                                    <input type="file" id="csvFiles" name="csv_files[]" multiple accept=".csv" class="d-none">
+                                    <input type="file" id="csvFiles" name="csv_files[]" multiple accept=".csv,.txt" class="d-none">
                                     <button type="button" class="btn btn-success" onclick="document.getElementById('csvFiles').click()">
                                         <i class="fas fa-folder-open me-2"></i>Pilih File
                                     </button>
@@ -295,7 +295,7 @@ negara,kode_hs,label,tahun,jumlah,satuan,sumber_data
         </div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
     <script>
         let selectedFiles = [];
         let importJobId = null;
@@ -335,12 +335,35 @@ negara,kode_hs,label,tahun,jumlah,satuan,sumber_data
         function handleDrop(e) {
             e.preventDefault();
             uploadZone.classList.remove('dragover');
-            const files = Array.from(e.dataTransfer.files).filter(f => f.name.endsWith('.csv'));
+            
+            // FIXED: More permissive file filtering
+            const files = Array.from(e.dataTransfer.files).filter(file => {
+                const extension = file.name.split('.').pop().toLowerCase();
+                return ['csv', 'txt'].includes(extension);
+            });
+            
+            // Show warning if some files were filtered out
+            const totalFiles = e.dataTransfer.files.length;
+            if (files.length !== totalFiles) {
+                showAlert(`${totalFiles - files.length} file(s) were filtered out. Only CSV and TXT files are allowed.`, 'warning');
+            }
+            
             addFiles(files);
         }
 
         function addFiles(files) {
-            selectedFiles = [...selectedFiles, ...files];
+            // FIXED: Validate file extensions before adding
+            const validFiles = files.filter(file => {
+                const extension = file.name.split('.').pop().toLowerCase();
+                return ['csv', 'txt'].includes(extension);
+            });
+            
+            // Show warning if some files were filtered out
+            if (validFiles.length !== files.length) {
+                showAlert(`${files.length - validFiles.length} file(s) were filtered out. Only CSV and TXT files are allowed.`, 'warning');
+            }
+            
+            selectedFiles = [...selectedFiles, ...validFiles];
             updateFilesList();
             
             if (selectedFiles.length > 0) {
@@ -351,20 +374,26 @@ negara,kode_hs,label,tahun,jumlah,satuan,sumber_data
         }
 
         function updateFilesList() {
-            filesListDiv.innerHTML = selectedFiles.map((file, index) => `
-                <div class="file-item">
-                    <div class="d-flex align-items-center flex-grow-1">
-                        <i class="fas fa-file-csv text-success me-3"></i>
-                        <div>
-                            <div class="fw-bold">${file.name}</div>
-                            <small class="text-muted">${formatFileSize(file.size)}</small>
+            filesListDiv.innerHTML = selectedFiles.map((file, index) => {
+                // FIXED: Show different icons for different file types
+                const extension = file.name.split('.').pop().toLowerCase();
+                const iconClass = extension === 'csv' ? 'fa-file-csv text-success' : 'fa-file-alt text-info';
+                
+                return `
+                    <div class="file-item">
+                        <div class="d-flex align-items-center flex-grow-1">
+                            <i class="fas ${iconClass} me-3"></i>
+                            <div>
+                                <div class="fw-bold">${file.name}</div>
+                                <small class="text-muted">${formatFileSize(file.size)} • ${extension.toUpperCase()}</small>
+                            </div>
                         </div>
+                        <button type="button" class="btn btn-sm btn-outline-danger ms-2" onclick="removeFile(${index})">
+                            <i class="fas fa-times"></i>
+                        </button>
                     </div>
-                    <button type="button" class="btn btn-sm btn-outline-danger ms-2" onclick="removeFile(${index})">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-            `).join('');
+                `;
+            }).join('');
         }
 
         window.removeFile = function(index) {
@@ -390,23 +419,42 @@ negara,kode_hs,label,tahun,jumlah,satuan,sumber_data
                 '<i class="fas fa-times me-1"></i> Hide Advanced';
         }
 
+        // FIXED: Validation function with proper FormData
         async function validateFiles() {
+            if (selectedFiles.length === 0) {
+                showAlert('Please select at least one file to validate.', 'warning');
+                return;
+            }
+
             validateBtn.disabled = true;
             validateBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Validating...';
 
+            // Create clean FormData - no duplication
             const formData = new FormData();
             selectedFiles.forEach(file => {
                 formData.append('csv_files[]', file);
             });
 
             try {
-                const response = await fetch('{{ route("dashboard.validate-csv") }}', {
+                const response = await fetch('/dashboard/validate-csv', {
                     method: 'POST',
                     body: formData,
                     headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                        'Accept': 'application/json'
                     }
                 });
+
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const textResponse = await response.text();
+                    console.error('Server returned non-JSON response:', textResponse);
+                    throw new Error(`Server returned ${response.status} error. Check browser console for details.`);
+                }
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
 
                 const result = await response.json();
                 
@@ -414,10 +462,11 @@ negara,kode_hs,label,tahun,jumlah,satuan,sumber_data
                     displayValidationResults(result);
                     importBtn.disabled = false;
                 } else {
-                    showAlert('Validation failed: ' + result.message, 'danger');
+                    showAlert('Validation failed: ' + (result.message || 'Unknown error'), 'danger');
                 }
 
             } catch (error) {
+                console.error('Validation error:', error);
                 showAlert('Validation error: ' + error.message, 'danger');
             } finally {
                 validateBtn.disabled = false;
@@ -429,75 +478,212 @@ negara,kode_hs,label,tahun,jumlah,satuan,sumber_data
             const validationDiv = document.getElementById('validationResults');
             const contentDiv = document.getElementById('validationContent');
             
+            // ENHANCED: Show more detailed validation results
+            let fileDetails = '';
+            if (result.files && result.files.length > 0) {
+                fileDetails = result.files.map(file => {
+                    const statusClass = file.valid ? 'text-success' : 'text-danger';
+                    const statusIcon = file.valid ? 'fa-check-circle' : 'fa-exclamation-circle';
+                    
+                    return `
+                        <div class="border rounded p-2 mb-2">
+                            <div class="d-flex align-items-center">
+                                <i class="fas ${statusIcon} ${statusClass} me-2"></i>
+                                <strong>${file.filename}</strong>
+                                <span class="badge bg-light text-dark ms-auto">${file.size_formatted}</span>
+                            </div>
+                            ${file.errors.length > 0 ? `
+                                <div class="text-danger small mt-1">
+                                    <strong>Errors:</strong> ${file.errors.join(', ')}
+                                </div>
+                            ` : ''}
+                            ${file.warnings.length > 0 ? `
+                                <div class="text-warning small mt-1">
+                                    <strong>Warnings:</strong> ${file.warnings.join(', ')}
+                                </div>
+                            ` : ''}
+                            <div class="text-muted small mt-1">
+                                Estimated ${file.estimated_records.toLocaleString()} records
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+            
             contentDiv.innerHTML = `
                 <div class="row text-center mb-3">
-                    <div class="col-6">
-                        <div class="h5 text-success">${result.total_files}</div>
+                    <div class="col-4">
+                        <div class="h5 text-primary">${result.total_files}</div>
                         <small>Files</small>
                     </div>
-                    <div class="col-6">
+                    <div class="col-4">
                         <div class="h5 text-info">${result.total_estimated_records.toLocaleString()}</div>
                         <small>Est. Records</small>
                     </div>
+                    <div class="col-4">
+                        <div class="h5 text-muted">${result.estimated_time}</div>
+                        <small>Est. Time</small>
+                    </div>
                 </div>
-                <div class="text-center">
-                    <div class="text-muted">Estimated Time: <strong>${result.estimated_time}</strong></div>
-                </div>
+                ${fileDetails ? `
+                    <div class="mb-3">
+                        <h6>File Details:</h6>
+                        ${fileDetails}
+                    </div>
+                ` : ''}
             `;
             
             validationDiv.style.display = 'block';
             validationDiv.classList.add('fade-in');
         }
 
+        // Add this function to debug what's being sent
+        function debugFormData(formData) {
+            console.log('=== FORM DATA DEBUG ===');
+            
+            // Log all form entries
+            for (let [key, value] of formData.entries()) {
+                if (value instanceof File) {
+                    console.log(`${key}:`, {
+                        name: value.name,
+                        size: value.size,
+                        type: value.type,
+                        lastModified: value.lastModified
+                    });
+                } else {
+                    console.log(`${key}:`, value);
+                }
+            }
+            
+            // Log selected files array
+            console.log('selectedFiles array:', selectedFiles.map(file => ({
+                name: file.name,
+                size: file.size,
+                type: file.type
+            })));
+            
+            // Check form element
+            const form = document.getElementById('importForm');
+            console.log('Form element:', form);
+            console.log('Form data from FormData(form):', [...new FormData(form).entries()]);
+        }
+
+// Update your startImport to use this debug function
+// Add this line after creating formData:
+// debugFormData(formData);
+
+        // FIXED: Proper FormData construction
         async function startImport() {
-            const formData = new FormData(document.getElementById('importForm'));
+            if (selectedFiles.length === 0) {
+                showAlert('Please select files to import.', 'warning');
+                return;
+            }
+
+            // Option 1: Manual FormData (Recommended)
+            const formData = new FormData();
+            
+            // Add CSRF token
+            formData.append('_token', document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
+            
+            // Add form fields
+            const chunkSize = document.querySelector('select[name="chunk_size"]')?.value || '1000';
+            const validateData = document.querySelector('input[name="validate_data"]')?.checked ? '1' : '0';
+            
+            formData.append('chunk_size', chunkSize);
+            formData.append('validate_data', validateData);
+            
+            // Add files manually (clean approach)
             selectedFiles.forEach(file => {
                 formData.append('csv_files[]', file);
             });
+
+            // Debug what we're sending
+            console.log('=== SENDING FORM DATA ===');
+            for (let [key, value] of formData.entries()) {
+                if (value instanceof File) {
+                    console.log(`${key}:`, {name: value.name, size: value.size, type: value.type});
+                } else {
+                    console.log(`${key}:`, value);
+                }
+            }
 
             importBtn.disabled = true;
             importBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Starting...';
 
             try {
-                const response = await fetch('{{ route("dashboard.import-csv") }}', {
+                const response = await fetch('/dashboard/import-csv', {
                     method: 'POST',
-                    body: formData
+                    body: formData,
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                        'Accept': 'application/json'
+                    }
                 });
 
-                const result = await response.json();
+                const responseText = await response.text();
+                console.log('Response:', responseText);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const result = JSON.parse(responseText);
                 
                 if (result.success) {
-                    importJobId = result.job_id;
-                    showProgress();
-                    
-                    if (result.processing_mode === 'background') {
-                        startProgressTracking();
+                    if (result.processing_mode === 'debug') {
+                        showAlert('✅ Debug mode: Files validated successfully! Ready for real import.', 'info');
                     } else {
-                        showAlert('Import completed successfully!', 'success');
-                        setTimeout(() => window.location.href = '{{ route("dashboard.trade-data") }}', 2000);
+                        importJobId = result.job_id;
+                        showProgress();
+                        
+                        if (result.processing_mode === 'background') {
+                            startProgressTracking();
+                            showAlert('Large file import started in background.', 'info');
+                        } else {
+                            const imported = result.result?.records_imported || 0;
+                            showAlert(`Import completed! ${imported.toLocaleString()} records imported.`, 'success');
+                            setTimeout(() => window.location.href = '/dashboard', 2000);
+                        }
                     }
                 } else {
                     showAlert('Import failed: ' + result.message, 'danger');
-                    importBtn.disabled = false;
-                    importBtn.innerHTML = '<i class="fas fa-upload me-1"></i> Start Import';
                 }
 
             } catch (error) {
+                console.error('Import error:', error);
                 showAlert('Import error: ' + error.message, 'danger');
+            } finally {
                 importBtn.disabled = false;
                 importBtn.innerHTML = '<i class="fas fa-upload me-1"></i> Start Import';
             }
         }
 
         function showProgress() {
-            document.getElementById('progressSection').style.display = 'block';
-            document.getElementById('progressSection').classList.add('fade-in');
+            const progressSection = document.getElementById('progressSection');
+            if (progressSection) {
+                progressSection.style.display = 'block';
+                progressSection.classList.add('fade-in');
+            }
         }
 
         function startProgressTracking() {
+            if (!importJobId) return;
+
             progressInterval = setInterval(async () => {
                 try {
                     const response = await fetch(`/dashboard/import-progress/${importJobId}`);
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+                    
+                    // FIXED: Check content type for progress tracking too
+                    const contentType = response.headers.get('content-type');
+                    if (!contentType || !contentType.includes('application/json')) {
+                        console.warn('Progress tracking returned non-JSON response');
+                        return; // Don't throw error for progress tracking
+                    }
+
                     const progress = await response.json();
                     
                     updateProgressDisplay(progress);
@@ -506,20 +692,26 @@ negara,kode_hs,label,tahun,jumlah,satuan,sumber_data
                         clearInterval(progressInterval);
                         
                         if (progress.status === 'completed') {
-                            showAlert(`Import completed! ${progress.records_imported} records imported.`, 'success');
+                            const imported = progress.records_imported || 0;
+                            const errors = progress.errors || 0;
+                            showAlert(`Import completed! ${imported.toLocaleString()} records imported${errors > 0 ? ` (${errors} errors)` : ''}.`, 'success');
                             setTimeout(() => window.location.href = '{{ route("dashboard.trade-data") }}', 3000);
                         } else {
-                            showAlert('Import failed: ' + progress.message, 'danger');
+                            showAlert('Import failed: ' + (progress.message || 'Unknown error'), 'danger');
+                            importBtn.disabled = false;
+                            importBtn.innerHTML = '<i class="fas fa-upload me-1"></i> Start Import';
                         }
                     }
                     
                 } catch (error) {
                     console.error('Progress tracking error:', error);
+                    // Don't show alerts for progress tracking errors to avoid spam
                 }
             }, 2000);
         }
 
         function updateProgressDisplay(progress) {
+            // Safely update progress elements
             const progressBar = document.getElementById('progressBar');
             const recordsImported = document.getElementById('recordsImported');
             const currentFile = document.getElementById('currentFile');
@@ -527,12 +719,32 @@ negara,kode_hs,label,tahun,jumlah,satuan,sumber_data
             const errorCount = document.getElementById('errorCount');
             const statusMessage = document.getElementById('statusMessage');
             
-            progressBar.style.width = (progress.progress || 0) + '%';
-            recordsImported.textContent = (progress.records_imported || 0).toLocaleString();
-            currentFile.textContent = `${progress.current_file || 0}/${progress.total_files || 0}`;
-            processingSpeed.textContent = progress.processing_speed || '0/sec';
-            errorCount.textContent = progress.errors || 0;
-            statusMessage.textContent = progress.message || 'Processing...';
+            if (progressBar) {
+                const percentage = Math.min(100, Math.max(0, progress.progress || 0));
+                progressBar.style.width = percentage + '%';
+                progressBar.setAttribute('aria-valuenow', percentage);
+            }
+            
+            if (recordsImported) {
+                recordsImported.textContent = (progress.records_imported || 0).toLocaleString();
+            }
+            
+            if (currentFile) {
+                currentFile.textContent = `${progress.current_file || 0}/${progress.total_files || 0}`;
+            }
+            
+            if (processingSpeed) {
+                processingSpeed.textContent = progress.processing_speed || '0/sec';
+            }
+            
+            if (errorCount) {
+                errorCount.textContent = progress.errors || 0;
+                errorCount.className = (progress.errors || 0) > 0 ? 'text-warning' : 'text-muted';
+            }
+            
+            if (statusMessage) {
+                statusMessage.textContent = progress.message || 'Processing...';
+            }
         }
 
         function formatFileSize(bytes) {
@@ -542,17 +754,37 @@ negara,kode_hs,label,tahun,jumlah,satuan,sumber_data
             return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
         }
 
-        function showAlert(message, type) {
+        // ENHANCED: Better alert system with different types
+        function showAlert(message, type = 'info') {
             const alertDiv = document.createElement('div');
             alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
-            alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+            alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px; max-width: 500px;';
+            
+            // Different icons for different alert types
+            const icons = {
+                'success': 'fa-check-circle',
+                'danger': 'fa-exclamation-circle',
+                'warning': 'fa-exclamation-triangle',
+                'info': 'fa-info-circle'
+            };
+            
             alertDiv.innerHTML = `
-                ${message}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                <div class="d-flex align-items-center">
+                    <i class="fas ${icons[type] || icons.info} me-2"></i>
+                    <div class="flex-grow-1">${message}</div>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
             `;
             
             document.body.appendChild(alertDiv);
-            setTimeout(() => alertDiv.remove(), 5000);
+            
+            // Auto remove after 5 seconds (except for errors, which stay longer)
+            const timeout = type === 'danger' ? 10000 : 5000;
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.remove();
+                }
+            }, timeout);
         }
     </script>
 </body>

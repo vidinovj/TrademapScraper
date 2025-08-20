@@ -5,6 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\TbTrade;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use App\Jobs\ProcessCsvImportJob;
 
 class TradeDashboardController extends Controller
 {
@@ -95,7 +100,6 @@ class TradeDashboardController extends Controller
     
     /**
      * Export trade data to CSV in TbTrade format (compatible with import)
-     * Now creates perfect export → import cycle for Data Engineer demo
      */
     public function export(Request $request)
     {
@@ -137,11 +141,8 @@ class TradeDashboardController extends Controller
         $callback = function() use ($data) {
             $file = fopen('php://output', 'w');
             
-            // Add BOM for proper UTF-8 encoding in Excel
-            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
-            
             // CSV headers - exactly matching import format for perfect cycle
-            fputcsv($file, [
+            $headerRow = [
                 'negara',
                 'kode_hs', 
                 'label',
@@ -149,19 +150,21 @@ class TradeDashboardController extends Controller
                 'jumlah',
                 'satuan',
                 'sumber_data'
-            ]);
+            ];
+            fputcsv($file, $headerRow);
             
-            // CSV data - ready for re-import
+            // CSV data - clean and consistent formatting
             foreach ($data as $row) {
-                fputcsv($file, [
-                    $row->negara,
-                    $row->kode_hs,
-                    $row->label,
-                    $row->tahun,
-                    $row->jumlah, // Keep as numeric for import compatibility
-                    $row->satuan,
-                    $row->sumber_data
-                ]);
+                $csvRow = [
+                    trim($row->negara ?? ''),
+                    trim($row->kode_hs ?? ''),
+                    trim($row->label ?? ''),
+                    intval($row->tahun ?? date('Y')),
+                    number_format($row->jumlah, 2, '.', ''), // Consistent decimal format
+                    trim($row->satuan ?? '-'),
+                    trim($row->sumber_data ?? 'Trademap')
+                ];
+                fputcsv($file, $csvRow);
             }
             
             fclose($file);
@@ -171,12 +174,25 @@ class TradeDashboardController extends Controller
     }
 
     /**
-     * Validate CSV files before import (addresses Data Engineer Test requirements)
+     * FIXED: Validate CSV files with more permissive MIME validation
      */
     public function validateCsv(Request $request)
     {
+        // More permissive validation to handle browser download variations
         $request->validate([
-            'csv_files.*' => 'required|file|mimes:csv,txt|max:102400' // 100MB per file
+            'csv_files.*' => [
+                'required',
+                'file',
+                'max:102400', // 100MB per file
+                function ($attribute, $value, $fail) {
+                    $allowedExtensions = ['csv', 'txt'];
+                    $extension = strtolower($value->getClientOriginalExtension());
+                    
+                    if (!in_array($extension, $allowedExtensions)) {
+                        $fail("The {$attribute} must be a CSV or TXT file.");
+                    }
+                }
+            ]
         ]);
 
         $validationResults = [];
@@ -198,7 +214,7 @@ class TradeDashboardController extends Controller
     }
 
     /**
-     * Show the CSV import page (addresses Data Engineer Test Questions 3 & 4)
+     * Show the CSV import page
      */
     public function showImport()
     {
@@ -213,71 +229,76 @@ class TradeDashboardController extends Controller
         return view('dashboard.import-csv', compact('stats'));
     }
 
+    /**
+     * WORKING: Full CSV import with actual data processing
+     */
     public function importCsv(Request $request)
     {
-        $request->validate([
-            'csv_files.*' => 'required|file|mimes:csv,txt|max:102400', // 100MB per file
-            'chunk_size' => 'integer|min:100|max:10000',
-            'validate_data' => 'boolean'
-        ]);
-
         try {
-            $chunkSize = $request->get('chunk_size', 1000); // Default 1000 records per batch
+            Log::info('=== CSV IMPORT STARTED ===');
+            
+            // Basic validation
+            if (!$request->hasFile('csv_files')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No files uploaded'
+                ], 400);
+            }
+
+            $files = $request->file('csv_files');
+            $chunkSize = intval($request->get('chunk_size', 1000));
             $validateData = $request->get('validate_data', true);
-            $jobId = Str::uuid();
             
-            $fileInfos = [];
-            $totalFiles = count($request->file('csv_files'));
+            Log::info('Processing settings:', [
+                'files_count' => count($files),
+                'chunk_size' => $chunkSize,
+                'validate_data' => $validateData
+            ]);
 
-            // Store files temporarily and prepare for processing
-            foreach ($request->file('csv_files') as $index => $file) {
-                $filename = $jobId . '_' . $index . '_' . $file->getClientOriginalName();
-                $path = $file->storeAs('csv-imports', $filename, 'local');
+            $totalRecordsImported = 0;
+            $totalErrors = 0;
+            $processedFiles = 0;
+
+            foreach ($files as $file) {
+                Log::info("Processing file: " . $file->getClientOriginalName());
                 
-                $fileInfos[] = [
-                    'original_name' => $file->getClientOriginalName(),
-                    'stored_path' => $path,
-                    'file_size' => $file->getSize(),
-                    'estimated_records' => $this->estimateRecordsCount($file)
-                ];
+                $result = $this->processCSVFile($file, $chunkSize, $validateData);
+                
+                $totalRecordsImported += $result['records_imported'];
+                $totalErrors += $result['errors'];
+                $processedFiles++;
+                
+                Log::info("File processed:", $result);
             }
 
-            // Initialize progress tracking
-            $this->initializeImportProgress($jobId, $fileInfos);
+            Log::info('=== IMPORT COMPLETED ===', [
+                'files_processed' => $processedFiles,
+                'total_records_imported' => $totalRecordsImported,
+                'total_errors' => $totalErrors
+            ]);
 
-            // For large files (>50GB equivalent), use queue processing (Question 4 optimization)
-            $totalSize = array_sum(array_column($fileInfos, 'file_size'));
-            
-            if ($totalSize > 50 * 1024 * 1024) { // >50MB triggers background processing
-                // Dispatch background job for large imports
-                ProcessCsvImportJob::dispatch($jobId, $fileInfos, $chunkSize, $validateData);
-                
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Large file import queued for background processing',
-                    'job_id' => $jobId,
-                    'processing_mode' => 'background',
-                    'total_files' => $totalFiles,
-                    'check_progress_url' => route('dashboard.import-progress', $jobId)
-                ]);
-                
-            } else {
-                // Process smaller files directly
-                $result = $this->processImportDirectly($jobId, $fileInfos, $chunkSize, $validateData);
-                
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Import completed successfully',
-                    'job_id' => $jobId,
-                    'processing_mode' => 'direct',
-                    'result' => $result
-                ]);
-            }
+            return response()->json([
+                'success' => true,
+                'message' => "Import completed successfully!",
+                'job_id' => Str::uuid(),
+                'processing_mode' => 'direct',
+                'result' => [
+                    'files_processed' => $processedFiles,
+                    'records_imported' => $totalRecordsImported,
+                    'errors' => $totalErrors
+                ]
+            ]);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            Log::error('Import exception:', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'Import failed: ' . $e->getMessage()
+                'message' => 'Import error: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -302,7 +323,7 @@ class TradeDashboardController extends Controller
     }
 
     /**
-     * Validate single CSV file structure and content
+     * ENHANCED: CSV validation with better error handling
      */
     private function validateSingleCsv($file)
     {
@@ -325,15 +346,23 @@ class TradeDashboardController extends Controller
                 throw new \Exception('Cannot read file');
             }
 
-            // Read first line (headers)
-            $headers = fgetcsv($handle);
-            if ($headers === false) {
-                throw new \Exception('Cannot read CSV headers');
+            // Skip BOM if present
+            $bom = fread($handle, 3);
+            if ($bom !== chr(0xEF).chr(0xBB).chr(0xBF)) {
+                rewind($handle);
             }
 
+            // Read first line (headers)
+            $headers = fgetcsv($handle);
+            if ($headers === false || empty($headers)) {
+                throw new \Exception('Cannot read CSV headers or file is empty');
+            }
+
+            // Clean headers
+            $headers = array_map('trim', $headers);
             $validation['columns_found'] = $headers;
 
-            // Validate required columns for TbTrade (from Data Engineer test)
+            // Validate required columns for TbTrade
             $requiredColumns = ['negara', 'kode_hs', 'label', 'tahun', 'jumlah'];
             $missingColumns = array_diff($requiredColumns, $headers);
             
@@ -350,11 +379,32 @@ class TradeDashboardController extends Controller
                 }
             }
 
-            // Read sample data (first 3 rows)
+            // Read sample data with enhanced validation
             $sampleCount = 0;
+            $lineNumber = 1;
             while (($row = fgetcsv($handle)) !== false && $sampleCount < 3) {
-                $validation['sample_data'][] = array_combine($headers, $row);
-                $sampleCount++;
+                $lineNumber++;
+                
+                // Skip empty rows
+                if (empty(array_filter($row, 'strlen'))) {
+                    continue;
+                }
+                
+                // Check column count
+                if (count($row) !== count($headers)) {
+                    $validation['warnings'][] = "Line {$lineNumber}: Column count mismatch (expected " . count($headers) . ", got " . count($row) . ")";
+                    continue;
+                }
+                
+                try {
+                    $combinedData = array_combine($headers, $row);
+                    if ($combinedData !== false) {
+                        $validation['sample_data'][] = $combinedData;
+                        $sampleCount++;
+                    }
+                } catch (\Exception $e) {
+                    $validation['warnings'][] = "Line {$lineNumber}: Error combining data - " . $e->getMessage();
+                }
             }
 
             // Estimate total records
@@ -371,8 +421,207 @@ class TradeDashboardController extends Controller
     }
 
     /**
-     * Process CSV import directly (for smaller files)
+     * Process a single CSV file and import to database
      */
+    private function processCSVFile($file, $chunkSize, $validateData)
+    {
+        $handle = fopen($file->getRealPath(), 'r');
+        
+        if ($handle === false) {
+            throw new \Exception("Cannot open file: " . $file->getClientOriginalName());
+        }
+
+        // Skip BOM if present
+        $bom = fread($handle, 3);
+        if ($bom !== chr(0xEF).chr(0xBB).chr(0xBF)) {
+            rewind($handle);
+        }
+
+        // Read headers
+        $headers = fgetcsv($handle);
+        if ($headers === false || empty($headers)) {
+            fclose($handle);
+            throw new \Exception("Cannot read CSV headers");
+        }
+
+        // Clean headers
+        $headers = array_map('trim', $headers);
+        $expectedColumnCount = count($headers);
+        
+        Log::info("CSV headers:", $headers);
+
+        $recordsImported = 0;
+        $errors = 0;
+        $batch = [];
+        $lineNumber = 1;
+
+        while (($row = fgetcsv($handle)) !== false) {
+            $lineNumber++;
+            
+            // Skip empty rows
+            if (empty(array_filter($row, 'strlen'))) {
+                continue;
+            }
+            
+            try {
+                // Validate column count
+                if (count($row) !== $expectedColumnCount) {
+                    throw new \Exception("Column count mismatch on line {$lineNumber}");
+                }
+                
+                $record = $this->mapCsvRowToTbTrade($headers, $row, $validateData, $lineNumber);
+                if ($record) {
+                    $batch[] = $record;
+                }
+
+                // Process batch when chunk size reached
+                if (count($batch) >= $chunkSize) {
+                    $imported = $this->insertBatch($batch);
+                    $recordsImported += $imported;
+                    $batch = [];
+                    
+                    Log::info("Processed batch: {$imported} records imported");
+                }
+
+            } catch (\Exception $e) {
+                $errors++;
+                Log::warning("Row error on line {$lineNumber}: " . $e->getMessage());
+            }
+        }
+
+        // Process remaining records
+        if (!empty($batch)) {
+            $imported = $this->insertBatch($batch);
+            $recordsImported += $imported;
+            Log::info("Final batch: {$imported} records imported");
+        }
+
+        fclose($handle);
+
+        return [
+            'records_imported' => $recordsImported,
+            'errors' => $errors
+        ];
+    }
+
+    /**
+     * Map CSV row to TbTrade model structure
+     */
+    private function mapCsvRowToTbTrade($headers, $row, $validateData, $lineNumber = null)
+    {
+        if (count($headers) !== count($row)) {
+            throw new \Exception("Header/row count mismatch" . ($lineNumber ? " on line {$lineNumber}" : ""));
+        }
+        
+        $data = array_combine($headers, $row);
+        
+        if ($data === false) {
+            throw new \Exception("Failed to combine headers and row data");
+        }
+        
+        $record = [
+            'negara' => trim($data['negara'] ?? 'UNKNOWN'),
+            'kode_hs' => trim($data['kode_hs'] ?? ''),
+            'label' => trim($data['label'] ?? ''),
+            'tahun' => intval($data['tahun'] ?? date('Y')),
+            'jumlah' => floatval(str_replace(',', '', $data['jumlah'] ?? 0)),
+            'satuan' => trim($data['satuan'] ?? '-'),
+            'sumber_data' => trim($data['sumber_data'] ?? 'CSV Import'),
+            'scraped_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now()
+        ];
+
+        // Basic validation if enabled
+        if ($validateData) {
+            if (empty($record['kode_hs']) || empty($record['label'])) {
+                throw new \Exception('Missing required fields: kode_hs or label');
+            }
+        }
+
+        return $record;
+    }
+
+    /**
+     * Clean string values
+     */
+    private function cleanString($value)
+    {
+        return trim(strip_tags($value ?? ''));
+    }
+
+    /**
+     * Parse year values safely
+     */
+    private function parseYear($value)
+    {
+        $year = intval(trim($value));
+        
+        // Handle 2-digit years
+        if ($year >= 50 && $year <= 99) {
+            $year += 1900;
+        } elseif ($year >= 0 && $year <= 49) {
+            $year += 2000;
+        }
+        
+        return $year;
+    }
+
+    /**
+     * FIXED: Enhanced numeric parsing
+     */
+    private function parseNumeric($value)
+    {
+        if (empty($value)) return 0.0;
+        
+        $cleaned = trim($value);
+        
+        // Remove common thousand separators but preserve decimal points
+        $cleaned = preg_replace('/[,\s]/', '', $cleaned);
+        
+        // Handle negative values
+        $isNegative = strpos($cleaned, '-') !== false;
+        $cleaned = str_replace('-', '', $cleaned);
+        
+        $result = (float) $cleaned; // Explicit float cast
+        
+        return $isNegative ? -$result : $result;
+    }
+
+    /**
+     * FIXED: Enhanced record validation
+     */
+    private function validateRecord($record, $lineNumber = null)
+    {
+        $errors = [];
+        
+        if (empty($record['kode_hs'])) {
+            $errors[] = 'Missing required field: kode_hs';
+        }
+        
+        if (empty($record['label'])) {
+            $errors[] = 'Missing required field: label';
+        }
+        
+        if ($record['tahun'] < 2000 || $record['tahun'] > (date('Y') + 5)) {
+            $errors[] = 'Invalid year: ' . $record['tahun'];
+        }
+
+        // More flexible numeric validation
+        if (!is_numeric($record['jumlah'])) {
+            $errors[] = 'Invalid jumlah value: ' . $record['jumlah'] . ' (not numeric)';
+        } elseif ($record['jumlah'] < 0) {
+            $errors[] = 'Invalid jumlah value: ' . $record['jumlah'] . ' (negative)';
+        }
+        
+        if (!empty($errors)) {
+            $prefix = $lineNumber ? "Line {$lineNumber}: " : "";
+            throw new \Exception($prefix . implode(', ', $errors));
+        }
+    }
+
+    // ... (rest of your helper methods remain the same)
+    
     private function processImportDirectly($jobId, $fileInfos, $chunkSize, $validateData)
     {
         $totalRecordsImported = 0;
@@ -413,123 +662,29 @@ class TradeDashboardController extends Controller
     }
 
     /**
-     * Process single CSV file with chunking (optimization for Question 4)
-     */
-    private function processCSVFile($filePath, $chunkSize, $validateData)
-    {
-        $fullPath = Storage::path($filePath);
-        $handle = fopen($fullPath, 'r');
-        
-        if ($handle === false) {
-            throw new \Exception("Cannot open file: {$filePath}");
-        }
-
-        $headers = fgetcsv($handle); // Skip header row
-        $recordsImported = 0;
-        $errors = 0;
-        $batch = [];
-
-        while (($row = fgetcsv($handle)) !== false) {
-            try {
-                $record = $this->mapCsvRowToTbTrade($headers, $row, $validateData);
-                if ($record) {
-                    $batch[] = $record;
-                }
-
-                // Process batch when chunk size reached
-                if (count($batch) >= $chunkSize) {
-                    $imported = $this->insertBatch($batch);
-                    $recordsImported += $imported;
-                    $batch = [];
-                }
-
-            } catch (\Exception $e) {
-                $errors++;
-                // Log error but continue processing
-                \Log::warning("CSV import row error: " . $e->getMessage());
-            }
-        }
-
-        // Process remaining records
-        if (!empty($batch)) {
-            $imported = $this->insertBatch($batch);
-            $recordsImported += $imported;
-        }
-
-        fclose($handle);
-
-        return [
-            'records_imported' => $recordsImported,
-            'errors' => $errors
-        ];
-    }
-
-    /**
-     * Map CSV row to TbTrade model structure
-     */
-    private function mapCsvRowToTbTrade($headers, $row, $validateData)
-    {
-        $data = array_combine($headers, $row);
-        
-        $record = [
-            'negara' => $data['negara'] ?? 'UNKNOWN',
-            'kode_hs' => $data['kode_hs'] ?? '',
-            'label' => $data['label'] ?? '',
-            'tahun' => (int)($data['tahun'] ?? date('Y')),
-            'jumlah' => floatval($data['jumlah'] ?? 0),
-            'satuan' => $data['satuan'] ?? '-',
-            'sumber_data' => $data['sumber_data'] ?? 'CSV Import',
-            'scraped_at' => now(),
-            'created_at' => now(),
-            'updated_at' => now()
-        ];
-
-        // Validation if enabled
-        if ($validateData) {
-            if (empty($record['kode_hs']) || empty($record['label'])) {
-                throw new \Exception('Missing required fields: kode_hs or label');
-            }
-            
-            if ($record['tahun'] < 2000 || $record['tahun'] > date('Y') + 1) {
-                throw new \Exception('Invalid year: ' . $record['tahun']);
-            }
-        }
-
-        return $record;
-    }
-
-    /**
-     * Bulk insert batch with optimization (Question 4)
+     * Insert batch of records into database
      */
     private function insertBatch($batch)
     {
         try {
-            // Optimize for large inserts
-            DB::statement('SET foreign_key_checks=0');
             TbTrade::insert($batch);
-            DB::statement('SET foreign_key_checks=1');
-            
             return count($batch);
         } catch (\Exception $e) {
-            \Log::error('Batch insert failed: ' . $e->getMessage());
+            Log::error('Batch insert failed: ' . $e->getMessage());
             
-            // Fallback: try inserting one by one
+            // Fallback: insert one by one
             $inserted = 0;
             foreach ($batch as $record) {
                 try {
                     TbTrade::create($record);
                     $inserted++;
                 } catch (\Exception $individualError) {
-                    \Log::warning('Individual record insert failed: ' . $individualError->getMessage());
+                    Log::warning('Individual record insert failed: ' . $individualError->getMessage());
                 }
             }
             return $inserted;
         }
     }
-
-    /**
-     * Initialize import progress tracking
-     */
     private function initializeImportProgress($jobId, $fileInfos)
     {
         $progress = [
@@ -548,9 +703,6 @@ class TradeDashboardController extends Controller
         Cache::put("csv_import_progress_{$jobId}", $progress, now()->addHours(24));
     }
 
-    /**
-     * Update import progress
-     */
     private function updateImportProgress($jobId, $updates)
     {
         $progress = Cache::get("csv_import_progress_{$jobId}", []);
@@ -560,9 +712,6 @@ class TradeDashboardController extends Controller
         Cache::put("csv_import_progress_{$jobId}", $progress, now()->addHours(24));
     }
 
-    /**
-     * Estimate number of records in CSV
-     */
     private function estimateRecordsCount($file)
     {
         $handle = fopen($file->getRealPath(), 'r');
@@ -577,9 +726,6 @@ class TradeDashboardController extends Controller
         return max(0, $lineCount - 1); // Subtract header row
     }
 
-    /**
-     * Estimate processing time based on record count
-     */
     private function estimateProcessingTime($recordCount)
     {
         // Assume ~1000 records per second processing speed
@@ -596,9 +742,6 @@ class TradeDashboardController extends Controller
         }
     }
 
-    /**
-     * Format bytes to human readable
-     */
     private function formatBytes($bytes, $precision = 2)
     {
         $units = array('B', 'KB', 'MB', 'GB', 'TB');
