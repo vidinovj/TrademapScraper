@@ -120,12 +120,16 @@ class TrademapScraper
         
         $processedData = [];
         $years = [2020, 2021, 2022, 2023, 2024];
+        $skippedCount = 0;
         
         foreach ($scrapedData as $item) {
             $hsCode = trim($item['hsCode'] ?? '');
             $productLabel = trim($item['productLabel'] ?? '');
             
-            if (!empty($hsCode) && !empty($productLabel)) {
+            // ENHANCED VALIDATION - Skip invalid/placeholder data
+            $isValid = $this->isValidTradeRecord($hsCode, $productLabel);
+            
+            if ($isValid) {
                 foreach ($years as $year) {
                     $value = $item["value{$year}"] ?? 0;
                     $importedValue = is_numeric($value) ? (float)$value : 0.0;
@@ -141,11 +145,54 @@ class TrademapScraper
                         'scraped_at' => now()
                     ];
                 }
+            } else {
+                $skippedCount++;
+                Log::debug("Skipped invalid record: HS='{$hsCode}', Label='{$productLabel}'");
             }
         }
         
-        Log::info("Created " . count($processedData) . " database records");
+        Log::info("Created " . count($processedData) . " database records, skipped {$skippedCount} invalid records");
         return $processedData;
+    }
+
+    /**
+     * Enhanced validation for trade records
+     */
+    /**
+     * Simple validation - only skip obvious placeholder data
+     */
+    protected function isValidTradeRecord(string $hsCode, string $productLabel): bool
+    {
+        // Skip completely empty records
+        if (empty($hsCode) || empty($productLabel)) {
+            return false;
+        }
+        
+        // Skip ONLY obvious placeholder patterns where both are single digits
+        $obviousPlaceholders = [
+            ['1', '2'],
+            ['2', '3'], 
+            ['3', '4'],
+            ['4', '1'],
+            ['1234', '1234']
+        ];
+        
+        foreach ($obviousPlaceholders as [$hsPattern, $labelPattern]) {
+            if ($hsCode === $hsPattern && $productLabel === $labelPattern) {
+                return false;
+            }
+        }
+        
+        // Skip if label is ONLY a single digit
+        if (strlen($productLabel) === 1 && is_numeric($productLabel)) {
+            return false;
+        }
+        
+        // Everything else is VALID including:
+        // - HS codes like "27", "76", "31" (legitimate trade categories)
+        // - Labels like "Fertilisers", "Aluminium and articles thereof"
+        
+        return true;
     }
 
     public function saveToDatabase(array $tradeData): int
