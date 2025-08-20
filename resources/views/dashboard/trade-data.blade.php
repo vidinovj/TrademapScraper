@@ -75,9 +75,15 @@
                         </a>
                     @endif
                     
+                    <!-- Existing Export Button -->
                     <a href="{{ route('dashboard.export', ['search' => $search]) }}" 
-                       class="btn btn-outline-primary">
+                    class="btn btn-outline-primary">
                         <i class="fas fa-download me-1"></i> Export CSV
+                    </a>
+                    
+                    <!-- NEW: Simple Import Button (opens separate page) -->
+                    <a href="{{ route('dashboard.import') }}" class="btn btn-success">
+                        <i class="fas fa-upload me-1"></i> Import CSV
                     </a>
                     
                     <button type="button" class="btn btn-outline-success" onclick="refreshTicker()">
@@ -85,6 +91,7 @@
                     </button>
                 </div>
             </div>
+
             
             <div class="col-md-2 text-end">
                 <div class="fw-bold text-primary" style="font-size: 1.1rem;">
