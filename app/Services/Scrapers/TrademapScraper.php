@@ -155,9 +155,7 @@ class TrademapScraper
         return $processedData;
     }
 
-    /**
-     * Enhanced validation for trade records
-     */
+
     /**
      * Simple validation - only skip obvious placeholder data
      */

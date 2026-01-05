@@ -1,12 +1,14 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\JobDispatchController;
 use App\Http\Controllers\TradeDashboardController;
 
-// Redirect root to dashboard
 Route::get('/', function () {
-    return redirect()->route('dashboard.trade-data');
+    return view('welcome');
 });
+
+Route::post('/jobs/scrape', [JobDispatchController::class, 'scrape'])->name('jobs.scrape');
 
 
 
@@ -17,6 +19,10 @@ Route::prefix('dashboard')->name('dashboard.')->group(function () {
     Route::get('/', [TradeDashboardController::class, 'index'])
         ->name('trade-data');
     
+    // Jobs page
+    Route::get('/jobs', [TradeDashboardController::class, 'showJobsPage'])
+        ->name('jobs');
+
     // Export functionality
     Route::get('/export', [TradeDashboardController::class, 'export'])
         ->name('export');

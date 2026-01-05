@@ -1,61 +1,48 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# TrademapScraper
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Aplikasi web yang dibuat dengan Laravel untuk mengikis (scrape), memproses, dan memvisualisasikan data perdagangan dari [Trademap](https://www.trademap.org/).
 
-## About Laravel
+## Kemampuan Aplikasi
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+Aplikasi ini sedang dalam tahap pengembangan menengah dan memiliki beberapa kemampuan utama:
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+### 1. Scraper Data Trademap
+- **Scraper Otomatis**: Terdapat command `php artisan scrape:trademap-data` untuk mengikis data langsung dari situs Trademap.
+- **Logika Scraper**: Logika scraper utama berada di `app/Services/Scrapers/TrademapScraper.php`.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+### 2. Dashboard Visualisasi Data
+- **Tampilan Data**: Dashboard sederhana untuk menampilkan data perdagangan yang telah diproses. Dapat diakses melalui route `/dashboard/trade-data`.
+- **Controller**: Dikelola oleh `TradeDashboardController.php`.
+- **Views**: Menggunakan komponen Blade seperti `trade-data.blade.php`.
 
-## Learning Laravel
+### 3. Impor Data
+- **Impor CSV**: Memiliki fungsionalitas untuk mengimpor data dari file CSV melalui antarmuka web.
+- **Proses Latar Belakang**: Impor data CSV diproses sebagai _background job_ menggunakan `ProcessCsvImportJob.php` untuk menangani file besar tanpa memblokir _request_ utama.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+### 4. API
+- **Trade Ticker**: Menyediakan endpoint API di `/api/trade-ticker` untuk menyajikan data perdagangan dalam format JSON, cocok untuk integrasi dengan _frontend framework_ atau aplikasi lain.
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+### 5. Manajemen Data
+- **Model Eloquent**: Menggunakan model `TabelPerdagangan` dan `TbTrade` untuk berinteraksi dengan database.
+- **Migrasi Database**: Skema database untuk tabel perdagangan (`tb_trade`) telah didefinisikan dalam file migrasi.
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+### 6. Command Tambahan
+- **Setup Environment**: Termasuk command `php artisan app:setup-data-engineer-test` untuk mempersiapkan environment development atau test.
 
-## Laravel Sponsors
+## Rencana Pengembangan Lanjutan
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+- **Standardisasi Bahasa**: Melakukan standardisasi ke Bahasa Indonesia di seluruh antarmuka pengguna.
+- **Peningkatan Visualisasi**: Mengembangkan dashboard dengan grafik dan alat analisis yang lebih interaktif.
+- **Optimasi Scraper**: Meningkatkan ketahanan dan efisiensi scraper untuk menangani lebih banyak data dan variasi halaman.
+- **Testing**: Menambahkan _feature_ dan _unit test_ untuk memastikan kualitas dan keandalan kode.
 
-### Premium Partners
+## Instalasi
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
-
-## Contributing
-
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+1.  Clone repository ini.
+2.  Jalankan `composer install`.
+3.  Jalankan `npm install`.
+4.  Salin `.env.example` menjadi `.env` dan konfigurasi koneksi database Anda.
+5.  Jalankan `php artisan key:generate`.
+6.  Jalankan `php artisan migrate` untuk membuat tabel-tabel database.
+7.  Jalankan `npm run dev` untuk _assets bundling_.
+8.  Jalankan `php artisan serve` untuk memulai _development server_.

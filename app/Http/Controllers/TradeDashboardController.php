@@ -63,6 +63,14 @@ class TradeDashboardController extends Controller
     }
     
     /**
+     * Show the page for dispatching jobs.
+     */
+    public function showJobsPage()
+    {
+        return view('dashboard.jobs');
+    }
+
+    /**
      * Get summary statistics for the dashboard
      */
     private function getSummaryStatistics()

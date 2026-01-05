@@ -319,6 +319,11 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link" href="{{ route('dashboard.jobs') }}">
+                            <i class="fas fa-cogs me-1"></i> Jobs
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <span class="nav-link">
                             <i class="fas fa-clock me-1"></i> 
                             {{ now()->format('d M Y, H:i') }}
