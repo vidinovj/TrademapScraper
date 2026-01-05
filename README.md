@@ -26,15 +26,18 @@ Aplikasi ini sedang dalam tahap pengembangan menengah dan memiliki beberapa kema
 - **Model Eloquent**: Menggunakan model `TabelPerdagangan` dan `TbTrade` untuk berinteraksi dengan database.
 - **Migrasi Database**: Skema database untuk tabel perdagangan (`tb_trade`) telah didefinisikan dalam file migrasi.
 
-### 6. Command Tambahan
+### 6. Pemicu Job Via Web
+- **Antarmuka Web**: Kemampuan untuk memicu (dispatch) job di latar belakang (background tasks) seperti scraping data dari antarmuka web, tanpa perlu akses langsung ke terminal.
+- **Flow**: Tombol klik → Controller → Job Dispatch → Queue → Queue Worker → Eksekusi Job.
+
+### 7. Command Tambahan
 - **Setup Environment**: Termasuk command `php artisan app:setup-data-engineer-test` untuk mempersiapkan environment development atau test.
 
 ## Rencana Pengembangan Lanjutan
 
 - **Standardisasi Bahasa**: Melakukan standardisasi ke Bahasa Indonesia di seluruh antarmuka pengguna.
 - **Peningkatan Visualisasi**: Mengembangkan dashboard dengan grafik dan alat analisis yang lebih interaktif.
-- **Optimasi Scraper**: Meningkatkan ketahanan dan efisiensi scraper untuk menangani lebih banyak data dan variasi halaman.
-- **Testing**: Menambahkan _feature_ dan _unit test_ untuk memastikan kualitas dan keandalan kode.
+- **Optimasi Scraper**: Meningkatkan ketahanan dan efisiensi scraper, termasuk penambahan _feature_ dan _unit test_.
 
 ## Instalasi
 

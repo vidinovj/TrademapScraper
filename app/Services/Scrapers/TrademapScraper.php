@@ -198,23 +198,26 @@ class TrademapScraper
         if (empty($tradeData)) {
             return 0;
         }
-        
+
         try {
             $chunks = array_chunk($tradeData, 1000);
-            $totalInserted = 0;
-            
-            DB::transaction(function () use ($chunks, &$totalInserted) {
-                foreach ($chunks as $chunk) {
-                    DB::table('tb_trade')->insert($chunk);
-                    $totalInserted += count($chunk);
-                }
-            });
-            
-            Log::info("Saved {$totalInserted} records to database");
-            return $totalInserted;
-            
+            $totalAffected = 0;
+
+            foreach ($chunks as $chunk) {
+                // Use upsert to insert new records or update existing ones.
+                $affectedRows = DB::table('tb_trade')->upsert(
+                    $chunk,
+                    ['negara', 'kode_hs', 'tahun'], // Unique constraints
+                    ['jumlah', 'label', 'satuan', 'scraped_at'] // Columns to update on duplicate
+                );
+                $totalAffected += $affectedRows;
+            }
+
+            Log::info("Upserted {$totalAffected} records to database. (This number includes inserts and updates)");
+            return $totalAffected;
+
         } catch (Exception $e) {
-            Log::error("Database error: " . $e->getMessage());
+            Log::error("Database error during upsert: " . $e->getMessage());
             return 0;
         }
     }
