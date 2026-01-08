@@ -54,7 +54,7 @@ class TradeTickerController extends Controller
 
         $latestTrades = DB::table(DB::raw("({$subQuery->toSql()}) as sub"))
             ->mergeBindings($subQuery->getQuery())
-            ->where('rn', '<=', 2)
+            ->where('rn', '=', 1)
             ->orderBy('scraped_at', 'desc')
             ->limit(15)
             ->get();

@@ -52,11 +52,13 @@ class TradeDashboardController extends Controller
         
         // Get top sectors for additional insights
         $topSectors = $this->getTopSectors();
+        $treemapData = $this->getTreemapData();
         
         return view('dashboard.trade-data', compact(
             'tradeData', 
             'summaryStats', 
             'topSectors',
+            'treemapData',
             'search',
             'perPage'
         ));
@@ -86,6 +88,35 @@ class TradeDashboardController extends Controller
             'total_hs_codes' => $totalHsCodes,
             'last_update' => $lastUpdate
         ];
+    }
+
+    /**
+     * Get data for the treemap chart (top 20 products by value in 2024)
+     */
+    private function getTreemapData()
+    {
+        $totalImports2024 = TbTrade::where('tahun', 2024)->sum('jumlah');
+
+        if ($totalImports2024 == 0) {
+            return collect(); // Return empty collection if total is zero
+        }
+
+        $topProducts = TbTrade::select([
+            'kode_hs as x',
+            DB::raw('SUM(jumlah) as y'),
+            DB::raw('MAX(label) as full_label')
+        ])
+        ->where('tahun', 2024)
+        ->groupBy('kode_hs')
+        ->orderByDesc('y')
+        ->limit(20)
+        ->get();
+
+        // Add share_percentage to each product
+        return $topProducts->map(function ($product) use ($totalImports2024) {
+            $product->share_percentage = ($product->y / $totalImports2024) * 100;
+            return $product;
+        });
     }
     
     /**

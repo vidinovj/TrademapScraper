@@ -3,12 +3,12 @@
 @section('title', 'Indonesia Trade Data Dashboard')
 
 @section('content')
-<div class="container mx-auto px-4">
-    <!-- Trade Data Ticker (News-style sliding header) -->
-    @include('components.trade-ticker')
+<!-- Trade Data Ticker (News-style sliding header) -->
+@include('components.trade-ticker')
 
+<div class="container mx-auto px-4" style="padding-top: 1.5rem;">
     <!-- Summary Statistics Cards -->
-    <div class="row mb-4">
+    <div class="row mb-1">
         <div class="col-md-3">
             <div class="stat-card blue">
                 <h3>{{ number_format($summaryStats['total_records']) }}</h3>
@@ -65,7 +65,7 @@
             
             <div class="col-md-4">
                 <div class="d-flex gap-2">
-                    <button type="submit" class="btn btn-primary">
+                    <button type="submit" class="btn btn-outline-primary">
                         <i class="fas fa-search me-1"></i> Cari
                     </button>
                     
@@ -74,21 +74,6 @@
                             <i class="fas fa-times me-1"></i> Reset
                         </a>
                     @endif
-                    
-                    <!-- Existing Export Button -->
-                    <a href="{{ route('dashboard.export', ['search' => $search]) }}" 
-                    class="btn btn-outline-primary">
-                        <i class="fas fa-download me-1"></i> Export CSV
-                    </a>
-                    
-                    <!-- NEW: Simple Import Button (opens separate page) -->
-                    <a href="{{ route('dashboard.import') }}" class="btn btn-success">
-                        <i class="fas fa-upload me-1"></i> Import CSV
-                    </a>
-                    
-                    <button type="button" class="btn btn-outline-success" onclick="refreshTicker()">
-                        <i class="fas fa-sync me-1"></i> Refresh Ticker
-                    </button>
                 </div>
             </div>
 
@@ -99,6 +84,19 @@
                 </div>
             </div>
         </form>
+    </div>
+
+    <!-- Treemap Chart -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0 fw-bold">
+                <i class="fas fa-sitemap me-2"></i>
+                Porsi Impor Produk (20 Teratas, 2024)
+            </h5>
+        </div>
+        <div class="card-body">
+            <div id="treemap-chart"></div>
+        </div>
     </div>
 
     <!-- Main Data Table -->
@@ -112,271 +110,345 @@
                     </h5>
                     <small class="opacity-75">Unit: US Dollar ribu</small>
                 </div>
-                <div class="col-auto">
-                    <span class="badge bg-light text-dark">
-                        {{ $tradeData->firstItem() ?? 0 }} - {{ $tradeData->lastItem() ?? 0 }} 
-                        dari {{ number_format($tradeData->total()) }}
-                    </span>
-                </div>
-            </div>
-        </div>
-        
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0">
-                    <thead>
-                        <tr>
-                            <th style="width: 80px;">HS4</th>
-                            <th style="width: 100px;">Kode</th>
-                            <th style="min-width: 300px;">Label Produk</th>
-                            <th style="width: 120px;" class="text-end">Nilai impor<br>tahun 2020</th>
-                            <th style="width: 120px;" class="text-end">Nilai impor<br>tahun 2021</th>
-                            <th style="width: 120px;" class="text-end">Nilai impor<br>tahun 2022</th>
-                            <th style="width: 120px;" class="text-end">Nilai impor<br>tahun 2023</th>
-                            <th style="width: 120px;" class="text-end">Nilai impor<br>tahun 2024</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse($tradeData as $item)
-                            <tr>
-                                <td>
-                                    <button class="btn btn-sm btn-outline-primary" 
-                                            onclick="copyToClipboard('{{ $item->kode_hs }}')"
-                                            title="Klik untuk copy kode HS">
-                                        <i class="fas fa-plus"></i>
-                                    </button>
-                                </td>
-                                <td>
-                                    <span class="hs-code">{{ $item->kode_hs }}</span>
-                                </td>
-                                <td>
-                                    <div class="product-label">
-                                        {{ Str::limit($item->product_label, 80) }}
-                                        @if(strlen($item->product_label) > 80)
-                                            <span class="text-muted">...</span>
-                                        @endif
-                                    </div>
-                                </td>
-                                <td class="value-cell">
-                                    {{ $item->value_2020 > 0 ? number_format($item->value_2020) : '-' }}
-                                </td>
-                                <td class="value-cell">
-                                    {{ $item->value_2021 > 0 ? number_format($item->value_2021) : '-' }}
-                                </td>
-                                <td class="value-cell">
-                                    {{ $item->value_2022 > 0 ? number_format($item->value_2022) : '-' }}
-                                </td>
-                                <td class="value-cell">
-                                    {{ $item->value_2023 > 0 ? number_format($item->value_2023) : '-' }}
-                                </td>
-                                <td class="value-cell">
-                                    <strong style="color: var(--pustik-primary);">
-                                        {{ $item->value_2024 > 0 ? number_format($item->value_2024) : '-' }}
-                                    </strong>
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="8" class="text-center py-5">
-                                    <div class="text-muted">
-                                        <i class="fas fa-inbox display-1"></i>
-                                        <h5 class="mt-3">Tidak ada data perdagangan ditemukan</h5>
-                                        <p>Coba sesuaikan kriteria pencarian atau pastikan scraper sudah dijalankan.</p>
-                                        
-                                        @if(empty($search))
-                                            <a href="{{ url('/') }}" class="btn btn-primary mt-2">
-                                                <i class="fas fa-sync me-1"></i> Jalankan Scraper
-                                            </a>
-                                        @endif
-                                    </div>
-                                </td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        
-        @if($tradeData->hasPages())
-            <div class="card-footer bg-transparent">
-                <div class="row align-items-center">
-                    <div class="col-md-6">
-                        <p class="text-muted mb-0">
-                            Menampilkan {{ $tradeData->firstItem() ?? 0 }} sampai {{ $tradeData->lastItem() ?? 0 }} 
-                            dari {{ number_format($tradeData->total()) }} hasil
-                        </p>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="d-flex justify-content-end">
-                            {{ $tradeData->appends(request()->query())->links('pagination::bootstrap-4') }}
+                                <div class="col-auto">
+                                    <span class="badge bg-dark text-light">
+                                        {{ $tradeData->firstItem() ?? 0 }} - {{ $tradeData->lastItem() ?? 0 }} 
+                                        dari {{ number_format($tradeData->total()) }}
+                                    </span>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                </div>
-            </div>
-        @endif
-    </div>
-
-    <!-- Top Sectors Summary -->
-    @if($topSectors->count() > 0)
-        <div class="row mt-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="mb-0 fw-bold">
-                            <i class="fas fa-chart-pie me-2"></i>
-                            Top Sektor Impor (2024)
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            @foreach($topSectors->take(5) as $index => $sector)
-                                <div class="col-md-4 col-lg-2 mb-3">
-                                    <div class="sector-card">
-                                        <div class="d-flex align-items-center mb-2">
-                                            <span class="badge bg-primary me-2">{{ $sector->sector_code }}</span>
-                                            <small class="text-muted">HS {{ $sector->sector_code }}</small>
+                        
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0 defi-table">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 80px;">HS4</th>
+                                            <th style="width: 100px;">Kode</th>
+                                            <th style="min-width: 300px;">Label Produk</th>
+                                            <th style="width: 120px;" class="text-end">Nilai impor<br>tahun 2020</th>
+                                            <th style="width: 120px;" class="text-end">Nilai impor<br>tahun 2021</th>
+                                            <th style="width: 120px;" class="text-end">Nilai impor<br>tahun 2022</th>
+                                            <th style="width: 120px;" class="text-end">Nilai impor<br>tahun 2023</th>
+                                            <th style="width: 120px;" class="text-end">Nilai impor<br>tahun 2024</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @forelse($tradeData as $item)
+                                            <tr>
+                                                <td>
+                                                    <button class="btn btn-sm btn-outline-primary" 
+                                                            onclick="copyToClipboard('{{ $item->kode_hs }}')"
+                                                            title="Klik untuk copy kode HS">
+                                                        <i class="fas fa-plus"></i>
+                                                    </button>
+                                                </td>
+                                                <td>
+                                                    <span class="hs-code">{{ $item->kode_hs }}</span>
+                                                </td>
+                                                <td>
+                                                    <div class="product-label">
+                                                        {{ Str::limit($item->product_label, 80) }}
+                                                        @if(strlen($item->product_label) > 80)
+                                                            <span class="text-muted">...</span>
+                                                        @endif
+                                                    </div>
+                                                </td>
+                                                <td class="value-cell">
+                                                    {{ $item->value_2020 > 0 ? number_format($item->value_2020) : '-' }}
+                                                </td>
+                                                <td class="value-cell">
+                                                    {{ $item->value_2021 > 0 ? number_format($item->value_2021) : '-' }}
+                                                </td>
+                                                <td class="value-cell">
+                                                    {{ $item->value_2022 > 0 ? number_format($item->value_2022) : '-' }}
+                                                </td>
+                                                <td class="value-cell">
+                                                    {{ $item->value_2023 > 0 ? number_format($item->value_2023) : '-' }}
+                                                </td>
+                                                <td class="value-cell">
+                                                    <strong style="color: var(--pustik-primary);">
+                                                        {{ $item->value_2024 > 0 ? number_format($item->value_2024) : '-' }}
+                                                    </strong>
+                                                </td>
+                                            </tr>
+                                        @empty
+                                            <tr>
+                                                <td colspan="8" class="text-center py-5">
+                                                    <div class="text-muted">
+                                                        <i class="fas fa-inbox display-1"></i>
+                                                        <h5 class="mt-3">Tidak ada data perdagangan ditemukan</h5>
+                                                        <p>Coba sesuaikan kriteria pencarian atau pastikan scraper sudah dijalankan.</p>
+                                                        
+                                                        @if(empty($search))
+                                                            <a href="{{ url('/') }}" class="btn btn-primary mt-2">
+                                                                <i class="fas fa-sync me-1"></i> Jalankan Scraper
+                                                            </a>
+                                                        @endif
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        @endforelse
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        @if($tradeData->hasPages())
+                            <div class="card-footer bg-transparent">
+                                <div class="row align-items-center">
+                                    <div class="col-md-6">
+                                        <p class="text-muted mb-0">
+                                            Menampilkan {{ $tradeData->firstItem() ?? 0 }} sampai {{ $tradeData->lastItem() ?? 0 }} 
+                                            dari {{ number_format($tradeData->total()) }} hasil
+                                        </p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="d-flex justify-content-end">
+                                            {{ $tradeData->appends(request()->query())->links('pagination::bootstrap-4') }}
                                         </div>
-                                        <p class="small mb-1 fw-medium">{{ Str::limit($sector->sector_name, 40) }}</p>
-                                        <h6 class="mb-0" style="color: var(--pustik-primary);">
-                                            ${{ number_format($sector->total_value / 1000000, 1) }}B
-                                        </h6>
-                                        <small class="text-muted">{{ number_format($sector->record_count) }} produk</small>
                                     </div>
                                 </div>
-                            @endforeach
-                        </div>
+                            </div>
+                        @endif
                     </div>
+                
+                    <!-- Top Sectors Summary -->
+                    @if($topSectors->count() > 0)
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h5 class="mb-0 fw-bold">
+                                            <i class="fas fa-chart-pie me-2"></i>
+                                            Top Sektor Impor (2024)
+                                        </h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            @foreach($topSectors->take(5) as $index => $sector)
+                                                <div class="col-md-4 col-lg-2 mb-3">
+                                                    <div class="sector-card">
+                                                        <div class="d-flex align-items-center mb-2">
+                                                            <span class="badge bg-primary me-2">{{ $sector->sector_code }}</span>
+                                                            <small class="text-muted">HS {{ $sector->sector_code }}</small>
+                                                        </div>
+                                                        <p class="small mb-1 fw-medium">{{ Str::limit($sector->sector_name, 40) }}</p>
+                                                        <h6 class="mb-0" style="color: var(--pustik-primary);">
+                                                            ${{ number_format($sector->total_value / 1000000, 1) }}B
+                                                        </h6>
+                                                        <small class="text-muted">{{ number_format($sector->record_count) }} produk</small>
+                                                    </div>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
                 </div>
-            </div>
-        </div>
-    @endif
-</div>
-@endsection
-
-@push('styles')
-<style>
-    .product-label {
-        line-height: 1.4;
-        max-width: 300px;
-    }
-    
-    .toast-notification {
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: var(--pustik-primary);
-        color: white;
-        padding: 12px 20px;
-        border-radius: 0.375rem;
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-        z-index: 1060;
-        transform: translateX(100%);
-        opacity: 0;
-        transition: all 0.3s ease;
-    }
-    
-    .toast-notification.show {
-        transform: translateX(0);
-        opacity: 1;
-    }
-    
-    .sector-card:hover {
-        border-color: var(--pustik-primary);
-    }
-    
-    .btn-outline-primary:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 8px rgba(30, 64, 175, 0.2);
-    }
-    
-    tbody tr:hover .hs-code {
-        background-color: var(--pustik-primary);
-        color: white;
-    }
-    
-    .form-label {
-        color: var(--pustik-gray-800);
-        font-weight: 500;
-    }
-</style>
-@endpush
-
-@push('scripts')
-<script>
-    // Enhanced copy to clipboard with toast
-    function copyToClipboard(text) {
-        navigator.clipboard.writeText(text).then(function() {
-            showToast('Kode HS berhasil disalin ke clipboard!');
-        }).catch(function(err) {
-            console.error('Failed to copy: ', err);
-            showToast('Gagal menyalin ke clipboard', 'error');
-        });
-    }
-    
-    // Refresh ticker manually
-    function refreshTicker() {
-        if (window.tradeTicker) {
-            showToast('Memperbarui data ticker...', 'info');
-            
-            fetch('/api/ticker/refresh', { method: 'POST' })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        window.tradeTicker.loadLatestData();
-                        showToast('Data ticker berhasil diperbarui!', 'success');
+                @endsection
+                
+                @push('styles')
+                <style>
+                    .product-label {
+                        line-height: 1.4;
+                        max-width: 300px;
                     }
-                })
-                .catch(error => {
-                    showToast('Gagal memperbarui ticker', 'error');
-                });
-        }
-    }
-    
-    // Add smooth scrolling for pagination
-    document.addEventListener('DOMContentLoaded', function() {
-        const paginationLinks = document.querySelectorAll('.pagination a');
-        paginationLinks.forEach(link => {
-            link.addEventListener('click', function() {
-                setTimeout(() => {
-                    document.querySelector('.card-header').scrollIntoView({
-                        behavior: 'smooth'
+                    
+                    .toast-notification {
+                        position: fixed;
+                        top: 20px;
+                        right: 20px;
+                        background: var(--pustik-primary);
+                        color: white;
+                        padding: 12px 20px;
+                        border-radius: 0.375rem;
+                        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+                        z-index: 1060;
+                        transform: translateX(100%);
+                        opacity: 0;
+                        transition: all 0.3s ease;
+                    }
+                    
+                    .toast-notification.show {
+                        transform: translateX(0);
+                        opacity: 1;
+                    }
+                    
+                    .sector-card:hover {
+                        border-color: var(--pustik-primary);
+                    }
+                    
+                    .btn-outline-primary:hover {
+                        transform: translateY(-1px);
+                        box-shadow: 0 4px 8px rgba(30, 64, 175, 0.2);
+                    }
+                    
+                    tbody tr:hover .hs-code {
+                        background-color: var(--pustik-primary);
+                        color: white;
+                    }
+
+                    .sector-card .text-muted {
+                        color: var(--pustik-text-dark) !important;
+                    }
+
+                    .sector-card p {
+                        color: var(--pustik-text-light);
+                    }
+                </style>
+                @endpush
+                
+                @push('scripts')
+                <script>
+                    document.addEventListener('DOMContentLoaded', function() {
+                        // Treemap Chart
+                        var treemapOptions = {
+                            series: [{
+                                data: @json($treemapData)
+                            }],
+                            chart: {
+                                type: 'treemap',
+                                height: 400,
+                                background: 'transparent',
+                                foreColor: 'var(--pustik-text-dark)',
+                                toolbar: {
+                                    show: false
+                                }
+                            },
+                            theme: {
+                                mode: 'dark',
+                                monochrome: {
+                                    enabled: true,
+                                    color: '#3b82f6', // var(--pustik-primary)
+                                    shadeTo: 'dark',
+                                    shadeIntensity: 0.5
+                                }
+                            },
+                            plotOptions: {
+                                treemap: {
+                                    distributed: true,
+                                    enableShades: false,
+                                    dataLabels: {
+                                        format: 'scale'
+                                    }
+                                }
+                            },
+                            tooltip: {
+                                y: {
+                                    formatter: function(value, opts) {
+                                        const percentage = opts.w.config.series[opts.seriesIndex].data[opts.dataPointIndex].share_percentage;
+                                        
+                                        // Format dollar value
+                                        let fullValue = value * 1000;
+                                        let formattedValue;
+                                        if (fullValue >= 1000000000) {
+                                            formattedValue = '$' + (fullValue / 1000000000).toFixed(2) + ' B';
+                                        } else {
+                                            formattedValue = '$' + (fullValue / 1000000).toFixed(2) + ' M';
+                                        }
+
+                                        return `${formattedValue} (${percentage.toFixed(2)}%)`;
+                                    },
+                                    title: {
+                                        formatter: function(seriesName, opts) {
+                                            const seriesIndex = opts.seriesIndex;
+                                            const dataPointIndex = opts.dataPointIndex;
+                                            const fullLabel = opts.w.config.series[seriesIndex].data[dataPointIndex].full_label;
+                                            return fullLabel || ''; // Return the full product label
+                                        }
+                                    }
+                                }
+                            },
+                            stroke: {
+                                show: true,
+                                width: 2,
+                                colors: ['#161b22'] // var(--pustik-bg-card) for a subtle effect
+                            },
+                            dataLabels: {
+                                style: {
+                                    fontSize: '12px',
+                                    fontFamily: 'Inter, sans-serif',
+                                },
+                            },
+                        };
+
+                        var treemapChart = new ApexCharts(document.querySelector("#treemap-chart"), treemapOptions);
+                        treemapChart.render();
+
+                        // ... existing scripts
+                        const paginationLinks = document.querySelectorAll('.pagination a');
+                        paginationLinks.forEach(link => {
+                            link.addEventListener('click', function() {
+                                setTimeout(() => {
+                                    document.querySelector('.card-header').scrollIntoView({
+                                        behavior: 'smooth'
+                                    });
+                                }, 100);
+                            });
+                        });
+                        
+                        const searchInput = document.getElementById('search');
+                        if (searchInput) {
+                            const placeholders = [
+                                'Masukkan kode HS atau nama produk...',
+                                'Contoh: 27 untuk bahan bakar mineral...',
+                                'Contoh: Machinery untuk mesin...',
+                                'Contoh: 84 untuk reaktor nuklir...'
+                            ];
+                            let currentIndex = 0;
+                            
+                            setInterval(() => {
+                                if (!searchInput.value && document.activeElement !== searchInput) {
+                                    searchInput.placeholder = placeholders[currentIndex];
+                                    currentIndex = (currentIndex + 1) % placeholders.length;
+                                }
+                            }, 3000);
+                        }
+                        
+                        const hour = new Date().getHours();
+                        if (hour >= 9 && hour <= 17) {
+                            console.log('Business hours detected');
+                        } else {
+                            if (window.tradeTicker) {
+                                setTimeout(() => {
+                                    window.tradeTicker.setSpeed('slow');
+                                }, 2000);
+                            }
+                        }
                     });
-                }, 100);
-            });
-        });
-        
-        // Add search placeholder animation
-        const searchInput = document.getElementById('search');
-        if (searchInput) {
-            const placeholders = [
-                'Masukkan kode HS atau nama produk...',
-                'Contoh: 27 untuk bahan bakar mineral...',
-                'Contoh: Machinery untuk mesin...',
-                'Contoh: 84 untuk reaktor nuklir...'
-            ];
-            let currentIndex = 0;
-            
-            setInterval(() => {
-                if (!searchInput.value && document.activeElement !== searchInput) {
-                    searchInput.placeholder = placeholders[currentIndex];
-                    currentIndex = (currentIndex + 1) % placeholders.length;
-                }
-            }, 3000);
-        }
-        
-        // Add ticker style switching based on time
-        const hour = new Date().getHours();
-        if (hour >= 9 && hour <= 17) {
-            // Business hours - normal style
-            console.log('Business hours detected');
-        } else {
-            // Off hours - maybe different style
-            if (window.tradeTicker) {
-                setTimeout(() => {
-                    window.tradeTicker.setSpeed('slow');
-                }, 2000);
-            }
-        }
-    });
-</script>
-@endpush
+
+                    // Enhanced copy to clipboard with toast
+                    function copyToClipboard(text) {
+                        navigator.clipboard.writeText(text).then(function() {
+                            showToast('Kode HS berhasil disalin ke clipboard!');
+                        }).catch(function(err) {
+                            console.error('Failed to copy: ', err);
+                            showToast('Gagal menyalin ke clipboard', 'error');
+                        });
+                    }
+                    
+                    // Refresh ticker manually
+                    function refreshTicker() {
+                        if (window.tradeTicker) {
+                            showToast('Memperbarui data ticker...', 'info');
+                            
+                            fetch('/api/ticker/refresh', { method: 'POST' })
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.success) {
+                                        window.tradeTicker.loadLatestData();
+                                        showToast('Data ticker berhasil diperbarui!', 'success');
+                                    }
+                                })
+                                .catch(error => {
+                                    showToast('Gagal memperbarui ticker', 'error');
+                                });
+                        }
+                    }
+                </script>
+                @endpush
+                

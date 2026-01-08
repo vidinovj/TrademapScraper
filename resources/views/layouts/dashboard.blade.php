@@ -12,353 +12,391 @@
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <!-- Pustik Custom CSS -->
     <style>
         :root {
-            --pustik-primary: #1e40af;
-            --pustik-primary-dark: #1e3a8a;
-            --pustik-secondary: #3b82f6;
-            --pustik-blue-50: #eff6ff;
-            --pustik-green-50: #f0fdf4;
-            --pustik-purple-50: #faf5ff;
-            --pustik-yellow-50: #fefce8;
-            --pustik-gray-50: #f9fafb;
-            --pustik-gray-800: #1f2937;
-            --pustik-gray-600: #4b5563;
+            --pustik-primary: #3b82f6; /* blue-500 */
+            --pustik-secondary: #10b981; /* green-500 */
+            --pustik-purple: #a855f7;
+            --pustik-yellow: #f59e0b;
+            --pustik-bg-dark: #020617; /* Refined deep black */
+            --pustik-bg-card: #161b22; /* Refined lighter card background */
+            --pustik-border-card: #1e293b; /* Refined slate-800 border */
+            --pustik-border: #334155; /* slate-700 for other borders */
+            --pustik-text-light: #e2e8f0; /* slate-200 */
+            --pustik-text-dark: #cbd5e1; /* slate-300 for better contrast */
         }
         
         body {
-            background-color: var(--pustik-gray-50);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            color: var(--pustik-gray-800);
-        }
-        
-        .navbar-brand {
-            font-weight: 700;
-            color: var(--pustik-primary) !important;
-            font-size: 1.5rem;
+            background-color: var(--pustik-bg-dark);
+            font-family: 'Inter', sans-serif;
+            color: var(--pustik-text-light);
+            font-size: 0.875rem;
         }
         
         .card {
-            border: none;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--pustik-border-card);
+            box-shadow: none;
             border-radius: 0.5rem;
-            background: white;
+            background: var(--pustik-bg-card);
         }
         
         .card-header {
-            background: var(--pustik-primary);
-            color: white;
-            border-radius: 0.5rem 0.5rem 0 0 !important;
-            padding: 1.5rem;
-            border: none;
+            background: transparent;
+            color: var(--pustik-text-light);
+            border-bottom: 1px solid var(--pustik-border);
+            padding: 1rem 1.25rem;
         }
         
         .card-body {
-            padding: 1.5rem;
+            padding: 1.25rem;
         }
-        
+
+        /* Refined Stat Cards */
         .stat-card {
-            border-radius: 0.5rem;
-            padding: 1.5rem;
+            padding: 0.75rem; /* p-3 */
             margin-bottom: 1rem;
-            color: white;
-            position: relative;
-            overflow: hidden;
+            background: var(--pustik-bg-card);
+            border: 1px solid var(--pustik-border-card);
+            border-radius: 0.375rem;
         }
         
-        .stat-card.blue {
-            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
-        }
-        
-        .stat-card.green {
-            background: linear-gradient(135deg, #059669 0%, #10b981 100%);
-        }
-        
-        .stat-card.purple {
-            background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
-        }
-        
-        .stat-card.yellow {
-            background: linear-gradient(135deg, #d97706 0%, #f59e0b 100%);
-        }
-        
+        .stat-card.blue { border-top: 3px solid var(--pustik-primary); }
+        .stat-card.green { border-top: 3px solid var(--pustik-secondary); }
+        .stat-card.purple { border-top: 3px solid var(--pustik-purple); }
+        .stat-card.yellow { border-top: 3px solid var(--pustik-yellow); }
+
         .stat-card h3 {
-            font-size: 2.25rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-            line-height: 1;
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+            line-height: 1.2;
         }
-        
+
+        /* Refined Stat Card Labels */
         .stat-card p {
             margin: 0;
-            opacity: 0.9;
-            font-size: 0.95rem;
+            color: var(--pustik-text-light); /* Changed to light text for better readability */
+            font-size: 10px;
             font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.1em; /* tracking-widest */
         }
         
+        /* Refined Table */
         .table th {
-            background-color: var(--pustik-blue-50);
-            color: var(--pustik-primary);
+            background: transparent;
+            color: var(--pustik-text-dark);
             font-weight: 600;
             border: none;
-            padding: 1rem 0.75rem;
-            font-size: 0.875rem;
+            border-bottom: 1px solid var(--pustik-border-card);
+            padding: 0.5rem 0.75rem;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
         
         .table td {
-            border-color: #e5e7eb;
-            padding: 0.75rem;
+            border-color: var(--pustik-border-card);
+            padding: 0.5rem 0.75rem; /* py-2 */
             vertical-align: middle;
+            color: var(--pustik-text-light);
+            font-size: 0.8rem;
         }
         
         .table tbody tr:hover {
-            background-color: var(--pustik-gray-50);
-            transform: translateY(-1px);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            transition: all 0.2s ease;
+            background-color: #283549;
+        }
+
+        /*
+         * DEFI TABLE OVERRIDE
+         * A high-specificity override to defeat Bootstrap's default table styling
+         * and prevent "grey on white" issues.
+         */
+        .defi-table {
+            --bs-table-bg: var(--pustik-bg-card) !important;
+            --bs-table-color: var(--pustik-text-light) !important;
+            --bs-table-border-color: var(--pustik-border-card) !important;
+            --bs-table-hover-bg: #283549 !important;
+            color: var(--pustik-text-light) !important;
+            background-color: var(--pustik-bg-card) !important;
+        }
+
+        .defi-table thead {
+            background-color: var(--pustik-bg-dark) !important;
+        }
+
+        .defi-table th {
+            background: var(--pustik-bg-dark) !important;
+            color: var(--pustik-text-dark) !important; /* Muted text for header */
+            border-bottom: 1px solid var(--pustik-border-card) !important;
+            padding: 0.375rem 0.75rem !important; /* py-1.5 */
+        }
+
+        .defi-table td {
+            padding: 0.375rem 0.75rem !important; /* py-1.5 */
+            vertical-align: middle;
         }
         
-        .btn-primary {
-            background-color: var(--pustik-primary);
-            border-color: var(--pustik-primary);
-            border-radius: 0.375rem;
-            padding: 0.5rem 1rem;
-            font-weight: 500;
+        /* Monospace & Right-aligned numbers */
+        .value-cell, .hs-code {
+            font-family: 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', monospace;
+            font-size: 0.8rem;
         }
-        
-        .btn-primary:hover {
-            background-color: var(--pustik-primary-dark);
-            border-color: var(--pustik-primary-dark);
-            transform: translateY(-1px);
-            box-shadow: 0 4px 8px rgba(30, 64, 175, 0.3);
-        }
-        
-        .btn-outline-primary {
-            color: var(--pustik-primary);
-            border-color: var(--pustik-primary);
-            border-radius: 0.375rem;
-        }
-        
-        .btn-outline-primary:hover {
-            background-color: var(--pustik-primary);
-            border-color: var(--pustik-primary);
-            transform: translateY(-1px);
-        }
-        
-        .btn-outline-secondary {
-            color: var(--pustik-gray-600);
-            border-color: #d1d5db;
-            border-radius: 0.375rem;
-        }
-        
-        .search-container {
-            background: white;
-            border-radius: 0.5rem;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-        }
-        
-        .form-control-lg {
-            padding: 0.75rem 1rem;
-            font-size: 1rem;
-            border-radius: 0.375rem;
-            border: 1px solid #d1d5db;
-        }
-        
-        .form-control-lg:focus {
-            border-color: var(--pustik-primary);
-            box-shadow: 0 0 0 0.2rem rgba(30, 64, 175, 0.25);
-        }
-        
-        .form-select {
-            border-radius: 0.375rem;
-            border: 1px solid #d1d5db;
-        }
-        
-        .form-select:focus {
-            border-color: var(--pustik-primary);
-            box-shadow: 0 0 0 0.2rem rgba(30, 64, 175, 0.25);
-        }
-        
-        .pagination .page-link {
-            color: var(--pustik-primary);
-            border-color: #d1d5db;
-            border-radius: 0.375rem;
-            margin: 0 0.125rem;
-        }
-        
-        .pagination .page-item.active .page-link {
-            background-color: var(--pustik-primary);
-            border-color: var(--pustik-primary);
-        }
-        
-        .pagination .page-link:hover {
-            background-color: var(--pustik-blue-50);
-            border-color: var(--pustik-primary);
+        .value-cell {
+            text-align: right;
         }
         
         .hs-code {
-            font-family: 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', monospace;
             font-weight: 600;
             color: var(--pustik-primary);
-            background: var(--pustik-blue-50);
+            background: rgba(59, 130, 246, 0.1);
             padding: 0.25rem 0.5rem;
             border-radius: 0.25rem;
-            font-size: 0.875rem;
         }
-        
-        .value-cell {
-            text-align: right;
-            font-family: 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', monospace;
-            font-weight: 500;
-            font-size: 0.875rem;
+
+        .main-content {
+            margin-left: 260px;
+            width: calc(100% - 260px);
+            padding: 0 1.5rem 1.5rem 1.5rem;
         }
-        
-        .sector-card {
-            border: 1px solid #e5e7eb;
-            border-radius: 0.5rem;
-            padding: 1rem;
-            height: 100%;
-            background: white;
-            transition: all 0.2s ease;
+
+        .main-content main {
+            /* padding-top: 1.5rem; */
         }
-        
-        .sector-card:hover {
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            transform: translateY(-2px);
-        }
-        
-        .badge {
-            font-weight: 500;
-            padding: 0.375rem 0.75rem;
-            border-radius: 0.375rem;
-        }
-        
-        .loading {
-            opacity: 0.6;
-            pointer-events: none;
-        }
-        
-        .navbar {
-            background: white;
-            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-            border-bottom: 1px solid #e5e7eb;
-        }
-        
-        .nav-link {
-            color: var(--pustik-gray-600) !important;
-            font-weight: 500;
-            transition: color 0.2s ease;
-        }
-        
-        .nav-link:hover {
-            color: var(--pustik-primary) !important;
-        }
-        
+
         footer {
-            background: white;
-            border-top: 1px solid #e5e7eb;
+            background: var(--pustik-bg-dark);
+            border-top: 1px solid var(--pustik-border-card);
             margin-top: 3rem;
         }
         
-        .product-label {
-            line-height: 1.4;
-            color: var(--pustik-gray-800);
+        /* Refined Sidebar */
+        .sidebar {
+            width: 260px;
+            background-color: var(--pustik-bg-dark); /* Changed to match card background */
+            border-right: 1px solid var(--pustik-border-card);
+            padding: 1rem;
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            z-index: 1000;
+        }
+        
+        .sidebar .navbar-brand {
+            margin-bottom: 2rem;
+            display: block;
+            text-align: center;
+            font-size: 1.25rem;
+        }
+
+        .sidebar .nav-link {
+            font-size: 0.9rem;
+            padding: 0.6rem 1rem;
+            border-radius: 0.375rem;
+            margin-bottom: 0.25rem;
+            display: flex;
+            align-items: center;
+            color: var(--pustik-text-dark) !important;
+            font-weight: 500;
+            border-left: 2px solid transparent;
+        }
+        
+        .sidebar .nav-link i {
+            width: 20px;
+            text-align: center;
+            margin-right: 0.75rem;
             font-size: 0.875rem;
+        }
+
+        /* Refined Sidebar Active State */
+        .sidebar .nav-link.active {
+            background-color: rgba(255, 255, 255, 0.05); /* bg-white/5 */
+            color: var(--pustik-text-light) !important;
+            border-left: 2px solid var(--pustik-primary);
+            font-weight: 600;
+        }
+        
+        .sidebar .nav-link:not(.active):hover {
+            background-color: var(--pustik-bg-card);
+            color: var(--pustik-text-light) !important;
+        }
+
+        .btn-success {
+            background-color: var(--pustik-secondary);
+            border-color: var(--pustik-secondary);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background-color: #047857; /* darker green */
+            border-color: #047857;
+        }
+
+        .btn-outline-success {
+            color: var(--pustik-secondary);
+            border-color: var(--pustik-secondary);
+        }
+
+        .btn-outline-success:hover {
+            background-color: var(--pustik-secondary);
+            color: white;
+        }
+
+        .btn-primary {
+            background-color: var(--pustik-primary);
+            border-color: var(--pustik-primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #2563eb; /* A slightly darker shade of blue */
+            border-color: #2563eb;
+        }
+
+        .btn-outline-primary {
+            color: var(--pustik-primary);
+            border-color: var(--pustik-primary);
+        }
+
+        .btn-outline-primary:hover {
+            background-color: var(--pustik-primary);
+            color: white;
+        }
+        
+        .search-container {
+            background: var(--pustik-bg-card);
+            border-radius: 0.5rem;
+            padding: 0.5rem 1rem;
+            margin-bottom: 1rem;
+            border: 1px solid var(--pustik-border-card);
+        }
+        
+        .input-group-text {
+            background-color: var(--pustik-bg-dark);
+            border-color: var(--pustik-border);
+            color: var(--pustik-text-dark);
+        }
+        
+        .form-control-lg, .form-select {
+            background-color: var(--pustik-bg-dark);
+            color: var(--pustik-text-dark); /* Changed to dim text color */
+            border-radius: 0.375rem;
+            border: 1px solid var(--pustik-border);
+            padding: 0.5rem 0.75rem;
+            font-size: 0.875rem;
+        }
+
+        .form-control-lg::placeholder { /* Placeholder style */
+            color: var(--pustik-text-dark);
+            opacity: 1; /* Ensure full opacity */
+        }
+        
+        
+        .form-control-lg:focus, .form-select:focus {
+            border-color: var(--pustik-primary);
+            background-color: var(--pustik-bg-dark);
+            color: var(--pustik-text-light);
+            box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.25);
+        }
+
+        .form-label {
+            color: var(--pustik-text-light);
+            font-weight: 500;
+            margin-bottom: 0.25rem;
+            font-size: 0.875rem;
+        }
+
+        /* Media queries */
+        @media (max-width: 992px) {
+            .sidebar { width: 100%; height: auto; position: relative; }
+            .main-content { margin-left: 0; width: 100%; }
+            .sidebar .nav-item { display: inline-block; }
         }
         
         @media (max-width: 768px) {
-            .stat-card h3 {
-                font-size: 1.875rem;
-            }
-            
-            .table-responsive {
-                font-size: 0.8rem;
-            }
-            
-            .card-body {
-                padding: 1rem;
-            }
-            
-            .search-container {
-                padding: 1rem;
-            }
+            .stat-card h3 { font-size: 1.5rem; }
         }
     </style>
     
     @stack('styles')
 </head>
 <body>
-    <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="{{ route('dashboard.trade-data') }}">
-                <i class="fas fa-chart-line me-2"></i>
-                Data Impor Indonesia
-            </a>
-            
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ route('dashboard.trade-data') }}">
-                            <i class="fas fa-home me-1"></i> Dashboard
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ route('dashboard.export') }}">
-                            <i class="fas fa-download me-1"></i> Export Data
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ route('dashboard.jobs') }}">
-                            <i class="fas fa-cogs me-1"></i> Jobs
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <span class="nav-link">
-                            <i class="fas fa-clock me-1"></i> 
-                            {{ now()->format('d M Y, H:i') }}
-                        </span>
-                    </li>
-                </ul>
-            </div>
+    <div class="sidebar">
+        <a class="navbar-brand" href="{{ route('dashboard.trade-data') }}">
+            <img src="/images/logo.png" alt="Logo" style="max-height: 60px; width: auto;">
+        </a>
+        <ul class="nav flex-column">
+            <li class="nav-item">
+                <a class="nav-link {{ request()->routeIs('dashboard.trade-data') ? 'active' : '' }}" href="{{ route('dashboard.trade-data') }}">
+                    <i class="fas fa-home"></i> Dashboard
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {{ request()->routeIs('dashboard.export') ? 'active' : '' }}" href="{{ route('dashboard.export') }}">
+                    <i class="fas fa-download"></i> Export Data
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {{ request()->routeIs('dashboard.import') ? 'active' : '' }}" href="{{ route('dashboard.import') }}">
+                    <i class="fas fa-upload"></i> Import Data
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#" onclick="refreshTicker(); return false;">
+                    <i class="fas fa-sync"></i> Refresh Ticker
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {{ request()->routeIs('dashboard.jobs') ? 'active' : '' }}" href="{{ route('dashboard.jobs') }}">
+                    <i class="fas fa-cogs"></i> Jobs
+                </a>
+            </li>
+        </ul>
+        <div class="mt-auto" style="position: absolute; bottom: 1.5rem;">
+            <span class="nav-link text-muted" style="font-size: 0.8rem">
+                <i class="fas fa-clock me-1"></i> 
+                {{ now()->format('d M Y, H:i') }}
+            </span>
         </div>
-    </nav>
+    </div>
 
-    <!-- Main Content -->
-    <main class="container-fluid mt-4">
-        @yield('content')
-    </main>
+    <div class="main-content">
+        <!-- Main Content -->
+        <main>
+            @yield('content')
+        </main>
 
-    <!-- Footer -->
-    <footer class="py-4">
-        <div class="container-fluid">
-            <div class="row">
-                <div class="col-md-6">
-                    <p class="text-muted mb-0">
-                        <strong>Data Engineering Test Demo</strong> - 
-                        <a href="https://trademap.org" target="_blank" class="text-decoration-none">Trademap.org</a>
-                    </p>
-                    <small class="text-muted">Kementerian Luar Negeri Republik Indonesia</small>
-                </div>
-                <div class="col-md-6 text-end">
-                    <p class="text-muted mb-0">
-                        <i class="fas fa-code me-1"></i>
-                        Laravel + Puppeteer + Bootstrap 5
-                    </p>
+        <!-- Footer -->
+        <footer class="py-4">
+            <div class="container-fluid">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p class="text-muted mb-0">
+                            <strong>Data Engineering Test Demo</strong> - 
+                            <a href="https://trademap.org" target="_blank" class="text-decoration-none">Trademap.org</a>
+                        </p>
+                        <small class="text-muted">Kementerian Luar Negeri Republik Indonesia</small>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <p class="text-muted mb-0">
+                            <i class="fas fa-code me-1"></i>
+                            Laravel + Puppeteer + Tailwind
+                        </p>
+                    </div>
                 </div>
             </div>
-        </div>
-    </footer>
+        </footer>
+    </div>
 
     <!-- Bootstrap 5 JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
@@ -421,6 +459,7 @@
         }
     </script>
     
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     @stack('scripts')
 </body>
 </html>
