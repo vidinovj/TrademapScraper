@@ -5,7 +5,7 @@
 @section('content')
 @include('components.trade-ticker')
 
-<div class="container mx-auto px-4" style="padding-top: 1.5rem;">
+<div class="container-fluid px-2" style="padding-top: 1rem;">
     <!-- Header -->
     <div class="row mb-4">
         <div class="col">
@@ -18,7 +18,7 @@
     </div>
 
     <!-- Current Stats -->
-    <div class="row mb-4">
+    <div class="row g-2 mb-4">
         <div class="col-md-3">
             <div class="stat-card blue">
                 <h3>{{ number_format($stats['total_records']) }}</h3>
@@ -52,7 +52,7 @@
     </div>
 
     <!-- Import Form -->
-    <div class="row">
+    <div class="row g-2">
         <div class="col-md-8">
             <!-- Step 1: File Upload -->
             <div class="card mb-4">

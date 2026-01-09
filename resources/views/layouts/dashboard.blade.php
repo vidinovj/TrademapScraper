@@ -46,25 +46,25 @@
             border: 1px solid var(--pustik-border-card);
             box-shadow: none;
             border-radius: 0.5rem;
-            background: var(--pustik-bg-card);
+            background: linear-gradient(to bottom, var(--pustik-bg-card), var(--pustik-bg-dark));
         }
         
         .card-header {
-            background: transparent;
+            background: linear-gradient(to bottom, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0));
             color: var(--pustik-text-light);
             border-bottom: 1px solid var(--pustik-border);
-            padding: 1rem 1.25rem;
+            padding: 0.5rem 0.75rem;
         }
         
         .card-body {
-            padding: 1.25rem;
+            padding: 0.75rem;
         }
 
         /* Refined Stat Cards */
         .stat-card {
-            padding: 0.75rem; /* p-3 */
-            margin-bottom: 1rem;
-            background: var(--pustik-bg-card);
+            padding: 0.75rem; 
+            margin-bottom: 0.75rem;
+            background: linear-gradient(to bottom, var(--pustik-bg-card), var(--pustik-bg-dark));
             border: 1px solid var(--pustik-border-card);
             border-radius: 0.375rem;
         }
@@ -75,20 +75,20 @@
         .stat-card.yellow { border-top: 3px solid var(--pustik-yellow); }
 
         .stat-card h3 {
-            font-size: 1.5rem;
+            font-size: 1.25rem;
             font-weight: 600;
-            margin-bottom: 0.25rem;
+            margin-bottom: 0.15rem;
             line-height: 1.2;
         }
 
         /* Refined Stat Card Labels */
         .stat-card p {
             margin: 0;
-            color: var(--pustik-text-light); /* Changed to light text for better readability */
-            font-size: 10px;
+            color: var(--pustik-text-light);
+            font-size: 9px;
             font-weight: 500;
             text-transform: uppercase;
-            letter-spacing: 0.1em; /* tracking-widest */
+            letter-spacing: 0.1em;
         }
         
         /* Refined Table */
@@ -106,7 +106,7 @@
         
         .table td {
             border-color: var(--pustik-border-card);
-            padding: 0.5rem 0.75rem; /* py-2 */
+            padding: 0.5rem 0.75rem;
             vertical-align: middle;
             color: var(--pustik-text-light);
             font-size: 0.8rem;
@@ -118,16 +118,14 @@
 
         /*
          * DEFI TABLE OVERRIDE
-         * A high-specificity override to defeat Bootstrap's default table styling
-         * and prevent "grey on white" issues.
          */
         .defi-table {
-            --bs-table-bg: var(--pustik-bg-card) !important;
+            --bs-table-bg: transparent !important;
             --bs-table-color: var(--pustik-text-light) !important;
             --bs-table-border-color: var(--pustik-border-card) !important;
             --bs-table-hover-bg: #283549 !important;
             color: var(--pustik-text-light) !important;
-            background-color: var(--pustik-bg-card) !important;
+            background-color: transparent !important;
         }
 
         .defi-table thead {
@@ -136,13 +134,13 @@
 
         .defi-table th {
             background: var(--pustik-bg-dark) !important;
-            color: var(--pustik-text-dark) !important; /* Muted text for header */
+            color: var(--pustik-text-dark) !important; 
             border-bottom: 1px solid var(--pustik-border-card) !important;
-            padding: 0.375rem 0.75rem !important; /* py-1.5 */
+            padding: 0.375rem 0.75rem !important;
         }
 
         .defi-table td {
-            padding: 0.375rem 0.75rem !important; /* py-1.5 */
+            padding: 0.375rem 0.75rem !important;
             vertical-align: middle;
         }
         
@@ -164,9 +162,9 @@
         }
 
         .main-content {
-            margin-left: 260px;
-            width: calc(100% - 260px);
-            padding: 0 1.5rem 1.5rem 1.5rem;
+            margin-left: 240px;
+            width: calc(100% - 240px);
+            padding: 0 1rem 1rem 1rem;
         }
 
         .main-content main {
@@ -181,10 +179,10 @@
         
         /* Refined Sidebar */
         .sidebar {
-            width: 260px;
+            width: 240px;
             background-color: var(--pustik-bg-dark); /* Changed to match card background */
             border-right: 1px solid var(--pustik-border-card);
-            padding: 1rem;
+            padding: 1rem 0.5rem; /* Reduced horizontal padding */
             position: fixed;
             top: 0;
             left: 0;
@@ -197,13 +195,30 @@
             display: block;
             text-align: center;
             font-size: 1.25rem;
+            padding: 0 0.5rem;
+        }
+
+        .sidebar-header {
+            font-size: 10px;
+            font-weight: 700;
+            color: #64748b; /* slate-500 */
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.5rem;
+            padding: 0 0.75rem;
+            margin-top: 1.5rem;
+        }
+        
+        /* First sidebar-header should have less top margin */
+        .sidebar-header:first-of-type {
+            margin-top: 0;
         }
 
         .sidebar .nav-link {
-            font-size: 0.9rem;
-            padding: 0.6rem 1rem;
+            font-size: 0.85rem; /* Slightly smaller */
+            padding: 0.5rem 0.75rem;
             border-radius: 0.375rem;
-            margin-bottom: 0.25rem;
+            margin-bottom: 0.125rem;
             display: flex;
             align-items: center;
             color: var(--pustik-text-dark) !important;
@@ -212,10 +227,15 @@
         }
         
         .sidebar .nav-link i {
-            width: 20px;
+            width: 16px; /* w-4 */
             text-align: center;
             margin-right: 0.75rem;
-            font-size: 0.875rem;
+            font-size: 0.85rem;
+            color: #94a3b8; /* slate-400 */
+        }
+        
+        .sidebar .nav-link:hover i, .sidebar .nav-link.active i {
+            color: currentColor;
         }
 
         /* Refined Sidebar Active State */
@@ -229,6 +249,29 @@
         .sidebar .nav-link:not(.active):hover {
             background-color: var(--pustik-bg-card);
             color: var(--pustik-text-light) !important;
+        }
+
+        .sidebar-secondary-text {
+            font-size: 0.65rem;
+            color: #64748b; /* slate-500 */
+            font-weight: 400;
+            line-height: 1;
+            margin-top: 0.1rem;
+        }
+
+        .sidebar .nav-link.active .sidebar-secondary-text {
+            color: var(--pustik-text-dark);
+            opacity: 0.8;
+        }
+        
+        .system-status {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            padding: 1rem;
+            background: rgba(0,0,0,0.2);
+            border-top: 1px solid var(--pustik-border-card);
         }
 
         .btn-success {
@@ -274,7 +317,7 @@
         }
         
         .search-container {
-            background: var(--pustik-bg-card);
+            background: linear-gradient(to bottom, var(--pustik-bg-card), var(--pustik-bg-dark));
             border-radius: 0.5rem;
             padding: 0.5rem 1rem;
             margin-bottom: 1rem;
@@ -333,40 +376,81 @@
 <body>
     <div class="sidebar">
         <a class="navbar-brand" href="{{ route('dashboard.trade-data') }}">
-            <img src="/images/logo.png" alt="Logo" style="max-height: 60px; width: auto;">
+            <img src="/images/logo.png" alt="Logo" style="max-height: 45px; width: auto;">
         </a>
-        <ul class="nav flex-column">
+        
+        <div class="sidebar-header">Explorer</div>
+        <ul class="nav flex-column mb-3">
             <li class="nav-item">
-                <a class="nav-link {{ request()->routeIs('dashboard.trade-data') ? 'active' : '' }}" href="{{ route('dashboard.trade-data') }}">
-                    <i class="fas fa-home"></i> Dashboard
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {{ request()->routeIs('dashboard.export') ? 'active' : '' }}" href="{{ route('dashboard.export') }}">
-                    <i class="fas fa-download"></i> Export Data
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {{ request()->routeIs('dashboard.import') ? 'active' : '' }}" href="{{ route('dashboard.import') }}">
-                    <i class="fas fa-upload"></i> Import Data
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="#" onclick="refreshTicker(); return false;">
-                    <i class="fas fa-sync"></i> Refresh Ticker
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {{ request()->routeIs('dashboard.jobs') ? 'active' : '' }}" href="{{ route('dashboard.jobs') }}">
-                    <i class="fas fa-cogs"></i> Jobs
+                <a class="nav-link {{ request()->routeIs('dashboard.trade-data') ? 'active' : '' }} flex-column align-items-start" href="{{ route('dashboard.trade-data') }}">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-chart-line"></i> Dashboard
+                    </div>
+                    <div class="sidebar-secondary-text ps-4 ms-1">Market insights & trends</div>
                 </a>
             </li>
         </ul>
-        <div class="mt-auto" style="position: absolute; bottom: 1.5rem;">
-            <span class="nav-link text-muted" style="font-size: 0.8rem">
-                <i class="fas fa-clock me-1"></i> 
-                {{ now()->format('d M Y, H:i') }}
-            </span>
+
+        <div class="sidebar-header">Data Management</div>
+        <ul class="nav flex-column mb-3">
+            <li class="nav-item">
+                <a class="nav-link {{ request()->routeIs('dashboard.export') ? 'active' : '' }} flex-column align-items-start" href="{{ route('dashboard.export') }}">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-download"></i> Export Data
+                    </div>
+                    <div class="sidebar-secondary-text ps-4 ms-1">Extract to CSV format</div>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {{ request()->routeIs('dashboard.import') ? 'active' : '' }} flex-column align-items-start" href="{{ route('dashboard.import') }}">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-upload"></i> Import Data
+                    </div>
+                    <div class="sidebar-secondary-text ps-4 ms-1">Bulk upload trade datasets</div>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link flex-column align-items-start" href="#" onclick="refreshTicker(); return false;">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-sync"></i> Refresh Ticker
+                    </div>
+                    <div class="sidebar-secondary-text ps-4 ms-1">Force update real-time feed</div>
+                </a>
+            </li>
+        </ul>
+
+        <div class="sidebar-header">System</div>
+        <ul class="nav flex-column mb-3">
+            <li class="nav-item">
+                <a class="nav-link {{ request()->routeIs('dashboard.jobs') ? 'active' : '' }} flex-column align-items-start" href="{{ route('dashboard.jobs') }}">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-server"></i> Jobs
+                    </div>
+                    <div class="sidebar-secondary-text ps-4 ms-1">Scraper & background tasks</div>
+                </a>
+            </li>
+        </ul>
+
+        <div class="sidebar-header">Resources</div>
+        <ul class="nav flex-column">
+            <li class="nav-item">
+                <a class="nav-link flex-column align-items-start" href="https://trademap.org" target="_blank">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-external-link-alt"></i> Trademap.org
+                    </div>
+                    <div class="sidebar-secondary-text ps-4 ms-1">ITC External Data Source</div>
+                </a>
+            </li>
+        </ul>
+
+        <div class="system-status">
+            <div class="d-flex align-items-center mb-1">
+                <div class="rounded-circle bg-success me-2" style="width: 8px; height: 8px;"></div>
+                <span class="text-white small fw-bold">System Online</span>
+            </div>
+            <div style="color: var(--pustik-text-dark); font-size: 0.7rem;">
+                <i class="fas fa-clock me-1"></i> {{ now()->format('H:i:s T') }}
+            </div>
         </div>
     </div>
 

@@ -13,14 +13,15 @@
 
 <style>
 .trade-ticker-container {
-    width: calc(100% + 3rem);
-    margin-left: -1.5rem;
+    width: calc(100% + 2rem);
+    margin-left: -1rem;
     background-color: var(--pustik-bg-card);
     color: var(--pustik-text-dark);
     overflow: hidden;
     position: relative;
     height: 40px;
     border-bottom: 1px solid var(--pustik-border);
+    margin-bottom: 0.5rem;
 }
 
 .ticker-content {

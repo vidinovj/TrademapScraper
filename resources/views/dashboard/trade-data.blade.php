@@ -6,9 +6,9 @@
 <!-- Trade Data Ticker (News-style sliding header) -->
 @include('components.trade-ticker')
 
-<div class="container mx-auto px-4" style="padding-top: 1.5rem;">
+<div class="container-fluid px-2" style="padding-top: 1rem;">
     <!-- Summary Statistics Cards -->
-    <div class="row mb-1">
+    <div class="row g-2 mb-1">
         <div class="col-md-3">
             <div class="stat-card blue">
                 <h3>{{ number_format($summaryStats['total_records']) }}</h3>
@@ -36,8 +36,8 @@
     </div>
 
     <!-- Search and Filters -->
-    <div class="search-container">
-        <form method="GET" action="{{ route('dashboard.trade-data') }}" class="row g-3 align-items-end">
+    <div class="search-container mb-3">
+        <form method="GET" action="{{ route('dashboard.trade-data') }}" class="row gx-2 g-3 align-items-end">
             <div class="col-md-4">
                 <label for="search" class="form-label fw-medium">Cari Produk atau Kode HS</label>
                 <div class="input-group">
@@ -95,16 +95,92 @@
         </form>
     </div>
 
-    <!-- Treemap Chart -->
-    <div class="card mb-4">
-        <div class="card-header">
-            <h5 class="mb-0 fw-bold">
-                <i class="fas fa-sitemap me-2"></i>
-                Porsi Impor Produk (20 Teratas, 2024)
-            </h5>
+    @php
+        $currentLevel = (int) ($hsLevel ?? 2);
+        $nextLevel = $currentLevel + 2;
+    @endphp
+
+    <!-- Charts Row: Treemap & Top Sectors -->
+    <div class="row g-2 mb-3">
+        <!-- Treemap (Products) -->
+        <div class="col-lg-8">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 fw-bold">
+                        <i class="fas fa-sitemap me-2"></i>
+                        Porsi Impor Produk (20 Teratas)
+                    </h5>
+                    @if($currentLevel > 2)
+                        @php
+                            $parentLevel = $currentLevel - 2;
+                            $parentPrefix = '';
+                            if ($currentLevel > 2 && !empty($searchPrefix)) {
+                                // If it's something like "27.10" (length 5), back to "27" (length 2)
+                                // If it's HS4 "27.10", next is HS6 "27.10.12". 
+                                // Parent of HS4 (27.10) is HS2 (27).
+                                if (str_contains($searchPrefix, '.')) {
+                                    $parts = explode('.', $searchPrefix);
+                                    array_pop($parts);
+                                    $parentPrefix = implode('.', $parts);
+                                }
+                            }
+                        @endphp
+                        <a href="{{ route('dashboard.trade-data', array_merge(request()->except(['page']), ['hs_level' => $parentLevel, 'search_prefix' => $parentPrefix, 'search' => ''])) }}" 
+                           class="btn btn-xs btn-outline-light py-0 px-2" 
+                           style="font-size: 0.75rem;"
+                           title="Kembali ke HS {{ $parentLevel }}{{ $parentPrefix ? ' (' . $parentPrefix . ')' : '' }}">
+                            <i class="fas fa-arrow-left"></i>
+                        </a>
+                    @endif
+                </div>
+                <div class="card-body p-2">
+                    <div id="treemap-chart" style="height: 400px;"></div>
+                </div>
+            </div>
         </div>
-        <div class="card-body">
-            <div id="treemap-chart"></div>
+
+        <!-- Top Sectors -->
+        <div class="col-lg-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0 fw-bold">
+                        <i class="fas fa-chart-pie me-2"></i>
+                        Top Sektor (2024)
+                    </h5>
+                </div>
+                <div class="card-body p-0" style="max-height: 400px; overflow-y: auto;">
+                    <div class="list-group list-group-flush">
+                        @foreach($topSectors->take(5) as $sector)
+                            <div class="list-group-item bg-transparent border-bottom border-secondary p-2 px-3" style="border-color: var(--pustik-border-card) !important;">
+                                <div class="d-flex align-items-center h-100">
+                                    <!-- Left: Metrics (Fixed Width) -->
+                                    <div class="d-flex flex-column me-3" style="min-width: 80px;">
+                                        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-20 mb-1 align-self-start">HS {{ $sector->sector_code }}</span>
+                                        <span class="fw-bold lh-1 mb-1" style="color: white; font-size: 0.95rem;">
+                                            ${{ number_format($sector->total_value / 1000000, 1) }}B
+                                        </span>
+                                        <small style="color: var(--pustik-text-light); font-size: 0.75rem; opacity: 0.8;">
+                                            {{ number_format($sector->share_percentage, 1) }}% share
+                                        </small>
+                                    </div>
+                                    
+                                    <!-- Right: Title (Flexible) -->
+                                    <div class="flex-grow-1 border-start border-secondary ps-3" style="border-color: rgba(255,255,255,0.1) !important;">
+                                        <div class="small text-light text-opacity-90 lh-sm">
+                                            {{ Str::limit($sector->sector_name, 70) }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
+                        @if($topSectors->count() == 0)
+                            <div class="p-4 text-center text-muted">
+                                No sector data available
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -133,21 +209,18 @@
                                 <table class="table table-hover mb-0 defi-table">
                                     <thead>
                                         <tr>
-                                            <th style="width: 80px;">HS4</th>
-                                            <th style="width: 100px;">Kode</th>
-                                            <th style="min-width: 300px;">Label Produk</th>
-                                            <th style="width: 120px;" class="text-end">Nilai impor<br>tahun 2020</th>
-                                            <th style="width: 120px;" class="text-end">Nilai impor<br>tahun 2021</th>
-                                            <th style="width: 120px;" class="text-end">Nilai impor<br>tahun 2022</th>
-                                            <th style="width: 120px;" class="text-end">Nilai impor<br>tahun 2023</th>
-                                            <th style="width: 120px;" class="text-end">Nilai impor<br>tahun 2024</th>
+                                            <th style="width: 60px;">HS4</th>
+                                            <th style="width: 65px;">Kode</th>
+                                            <th style="min-width: 200px;">Label Produk</th>
+                                            <th style="width: 100px;" class="text-end">Nilai impor<br>tahun 2020</th>
+                                            <th style="width: 100px;" class="text-end">Nilai impor<br>tahun 2021</th>
+                                            <th style="width: 100px;" class="text-end">Nilai impor<br>tahun 2022</th>
+                                            <th style="width: 100px;" class="text-end">Nilai impor<br>tahun 2023</th>
+                                            <th style="width: 100px;" class="text-end">Nilai impor<br>tahun 2024</th>
+                                            <th style="width: 80px;">Trend (5Y)</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @php
-                                            $currentLevel = (int) ($hsLevel ?? 2);
-                                            $nextLevel = $currentLevel + 2;
-                                        @endphp
                                         @forelse($tradeData as $item)
                                             <tr>
                                                 <td>
@@ -191,10 +264,15 @@
                                                         {{ $item->value_2024 > 0 ? number_format($item->value_2024) : '-' }}
                                                     </strong>
                                                 </td>
+                                                <td>
+                                                    <div id="sparkline-{{ str_replace('.', '-', $item->kode_hs) }}" 
+                                                         class="sparkline-chart"
+                                                         data-values="{{ json_encode([$item->value_2020, $item->value_2021, $item->value_2022, $item->value_2023, $item->value_2024]) }}"></div>
+                                                </td>
                                             </tr>
                                         @empty
                                             <tr>
-                                                <td colspan="8" class="text-center py-5">
+                                                <td colspan="9" class="text-center py-4">
                                                     <div class="text-muted">
                                                         <i class="fas fa-inbox display-1"></i>
                                                         <h5 class="mt-3">Tidak ada data perdagangan ditemukan</h5>
@@ -233,40 +311,7 @@
                         @endif
                     </div>
                 
-                    <!-- Top Sectors Summary -->
-                    @if($topSectors->count() > 0)
-                        <div class="row mt-4">
-                            <div class="col-12">
-                                <div class="card">
-                                    <div class="card-header">
-                                        <h5 class="mb-0 fw-bold">
-                                            <i class="fas fa-chart-pie me-2"></i>
-                                            Top Sektor Impor (2024)
-                                        </h5>
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="row">
-                                            @foreach($topSectors->take(5) as $index => $sector)
-                                                <div class="col-md-4 col-lg-2 mb-3">
-                                                    <div class="sector-card">
-                                                        <div class="d-flex align-items-center mb-2">
-                                                            <span class="badge bg-primary me-2">{{ $sector->sector_code }}</span>
-                                                            <small class="text-muted">HS {{ $sector->sector_code }}</small>
-                                                        </div>
-                                                        <p class="small mb-1 fw-medium">{{ Str::limit($sector->sector_name, 40) }}</p>
-                                                        <h6 class="mb-0" style="color: var(--pustik-primary);">
-                                                            ${{ number_format($sector->total_value / 1000000, 1) }}B
-                                                        </h6>
-                                                        <small class="text-muted">{{ number_format($sector->record_count) }} produk</small>
-                                                    </div>
-                                                </div>
-                                            @endforeach
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    @endif
+
                 </div>
                 @endsection
                 
@@ -336,6 +381,27 @@
                                 foreColor: 'var(--pustik-text-dark)',
                                 toolbar: {
                                     show: false
+                                },
+                                events: {
+                                    dataPointSelection: function(event, chartContext, config) {
+                                        @if($currentLevel < 6)
+                                            const dataPointIndex = config.dataPointIndex;
+                                            const seriesIndex = config.seriesIndex;
+                                            const hsCode = config.w.config.series[seriesIndex].data[dataPointIndex].x;
+                                            
+                                            // Construct drill-down URL
+                                            const baseUrl = "{{ route('dashboard.trade-data') }}";
+                                            const params = new URLSearchParams(window.location.search);
+                                            
+                                            // Update params for drill-down
+                                            params.set('hs_level', '{{ $nextLevel }}');
+                                            params.set('search_prefix', hsCode);
+                                            params.delete('search'); // Clear search on drill-down
+                                            params.delete('page');   // Reset pagination
+                                            
+                                            window.location.href = `${baseUrl}?${params.toString()}`;
+                                        @endif
+                                    }
                                 }
                             },
                             theme: {
@@ -357,6 +423,7 @@
                                 }
                             },
                             tooltip: {
+                                theme: 'dark',
                                 y: {
                                     formatter: function(value, opts) {
                                         const percentage = opts.w.config.series[opts.seriesIndex].data[opts.dataPointIndex].share_percentage;
@@ -397,6 +464,112 @@
 
                         var treemapChart = new ApexCharts(document.querySelector("#treemap-chart"), treemapOptions);
                         treemapChart.render();
+
+                        // Render Sparklines
+                        document.querySelectorAll('.sparkline-chart').forEach(function(chartElement) {
+                            const values = JSON.parse(chartElement.dataset.values);
+                            const hsCode = chartElement.id.replace('sparkline-', ''); // Get HS code for context if needed
+
+                            const sparklineOptions = {
+                                series: [{
+                                    data: values
+                                }],
+                                chart: {
+                                    type: 'line',
+                                    height: 35,
+                                    width: 100,
+                                    sparkline: {
+                                        enabled: true
+                                    },
+                                    foreColor: 'var(--pustik-text-dark)', // Use dark text for general elements
+                                    // Custom colors based on trend
+                                    animations: {
+                                        enabled: true,
+                                        easing: 'linear',
+                                        dynamicAnimation: {
+                                            speed: 500
+                                        }
+                                    }
+                                },
+                                stroke: {
+                                    curve: 'smooth',
+                                    width: 3,
+                                    // Dynamically set color based on trend (last vs first value)
+                                    colors: [values[values.length - 1] > values[0] ? '#22c55e' : (values[values.length - 1] < values[0] ? '#ef4444' : '#9ca3af')]
+                                },
+                                fill: {
+                                    opacity: 0.5,
+                                    type: 'solid',
+                                    gradient: {
+                                        enabled: true,
+                                        opacityFrom: 0.5,
+                                        opacityTo: 0,
+                                    }
+                                },
+                                tooltip: {
+                                    enabled: true,
+                                    theme: 'dark',
+                                    x: {
+                                        show: false
+                                    },
+                                    y: {
+                                        formatter: function(val) {
+                                            return "$" + (val / 1000).toFixed(0) + "K";
+                                        }
+                                    },
+                                    marker: {
+                                        show: false
+                                    }
+                                },
+                                // No X/Y axis
+                                xaxis: {
+                                    labels: {
+                                        show: false
+                                    },
+                                    axisBorder: {
+                                        show: false
+                                    },
+                                    axisTicks: {
+                                        show: false
+                                    }
+                                },
+                                yaxis: {
+                                    labels: {
+                                        show: false
+                                    },
+                                    axisBorder: {
+                                        show: false
+                                    },
+                                    axisTicks: {
+                                        show: false
+                                    }
+                                },
+                                grid: {
+                                    show: false,
+                                    padding: {
+                                        left: 0,
+                                        right: 0
+                                    }
+                                },
+                                legend: {
+                                    show: false
+                                },
+                                responsive: [{
+                                    breakpoint: 768,
+                                    options: {
+                                        chart: {
+                                            width: 80
+                                        }
+                                    }
+                                }]
+                            };
+
+                            // Add years to x-axis for tooltip if needed, but not visible
+                            sparklineOptions.xaxis.categories = ['2020', '2021', '2022', '2023', '2024'];
+
+                            var sparklineChart = new ApexCharts(chartElement, sparklineOptions);
+                            sparklineChart.render();
+                        });
 
                         // ... existing scripts
                         const paginationLinks = document.querySelectorAll('.pagination a');

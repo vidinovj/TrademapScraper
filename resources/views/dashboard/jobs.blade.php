@@ -5,7 +5,7 @@
 @section('content')
 @include('components.trade-ticker')
 
-<div class="container mx-auto px-4" style="padding-top: 1.5rem;">
+<div class="container-fluid px-2" style="padding-top: 1rem;">
     <!-- Header -->
     <div class="row mb-4">
         <div class="col">
@@ -18,7 +18,7 @@
     </div>
 
     <!-- Job Control Cards -->
-    <div class="row">
+    <div class="row g-2">
         <!-- Granular Scrape -->
         <div class="col-md-6">
             <div class="card">

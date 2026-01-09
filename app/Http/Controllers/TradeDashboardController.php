@@ -62,8 +62,8 @@ class TradeDashboardController extends Controller
         // Get summary statistics for Pustik-style cards
         $summaryStats = $this->getSummaryStatistics();
         
-        // Get top sectors for additional insights
-        $topSectors = $this->getTopSectors();
+        // Get top sectors for additional insights (dynamic based on current level)
+        $topSectors = $this->getTopSectors($hsLevel, $searchPrefix);
         $treemapData = $this->getTreemapData($hsLevel, $searchPrefix);
         
         return view('dashboard.trade-data', compact(
@@ -142,21 +142,43 @@ class TradeDashboardController extends Controller
     }
     
     /**
-     * Get top trading sectors
+     * Get top trading sectors/products dynamic to the current view
      */
-    private function getTopSectors()
+    private function getTopSectors(string $hsLevel = '2', ?string $searchPrefix = null)
     {
-        return TbTrade::select([
-            DB::raw('LEFT(kode_hs, 2) as sector_code'),
+        $totalImports2024 = TbTrade::where('tahun', 2024)->sum('jumlah');
+
+        if ($totalImports2024 == 0) {
+            return collect();
+        }
+
+        $query = TbTrade::select([
+            'kode_hs as sector_code',
             DB::raw('MAX(label) as sector_name'),
             DB::raw('SUM(jumlah) as total_value'),
             DB::raw('COUNT(*) as record_count')
         ])
-        ->where('tahun', 2024)
-        ->groupBy(DB::raw('LEFT(kode_hs, 2)'))
-        ->orderByDesc('total_value')
-        ->limit(10)
-        ->get();
+        ->where('tahun', 2024);
+
+        // Filter by Level
+        $level = (int) $hsLevel;
+        $query->where(DB::raw("LENGTH(REPLACE(kode_hs, '.', ''))"), $level);
+
+        // Filter by Prefix (Drill Down)
+        if (!empty($searchPrefix)) {
+            $query->where('kode_hs', 'LIKE', $searchPrefix . '%');
+        }
+
+        $topSectors = $query->groupBy('kode_hs')
+            ->orderByDesc('total_value')
+            ->limit(10)
+            ->get();
+
+        // Add share_percentage to each sector
+        return $topSectors->map(function ($sector) use ($totalImports2024) {
+            $sector->share_percentage = ($sector->total_value / $totalImports2024) * 100;
+            return $sector;
+        });
     }
     
     /**
