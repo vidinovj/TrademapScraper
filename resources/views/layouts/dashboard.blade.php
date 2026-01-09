@@ -379,18 +379,15 @@
         <!-- Footer -->
         <footer class="py-4">
             <div class="container-fluid">
-                <div class="row">
-                    <div class="col-md-6">
-                        <p class="text-muted mb-0">
-                            <strong>Data Engineering Test Demo</strong> - 
-                            <a href="https://trademap.org" target="_blank" class="text-decoration-none">Trademap.org</a>
+                <div class="row align-items-center">
+                    <div class="col-md-6 text-md-start text-center mb-2 mb-md-0">
+                        <p class="mb-0" style="color: var(--pustik-text-dark);">
+                            <strong>HarmoniData</strong> — Personal Research Project & Interactive Trade Terminal Data Source: <a href="https://trademap.org" target="_blank" class="text-decoration-none" style="color: var(--pustik-primary);">Trademap.org (ITC)</a>
                         </p>
-                        <small class="text-muted">Kementerian Luar Negeri Republik Indonesia</small>
                     </div>
-                    <div class="col-md-6 text-end">
-                        <p class="text-muted mb-0">
-                            <i class="fas fa-code me-1"></i>
-                            Laravel + Puppeteer + Tailwind
+                    <div class="col-md-6 text-md-end text-center">
+                        <p class="mb-0" style="color: var(--pustik-text-dark);">
+                            Built with Laravel + Puppeteer + Tailwind &copy; 2026 Jeremy Vidinov Binsar. All Rights Reserved.
                         </p>
                     </div>
                 </div>

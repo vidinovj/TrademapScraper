@@ -8,10 +8,6 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-Route::post('/jobs/scrape', [JobDispatchController::class, 'scrape'])->name('jobs.scrape');
-
-
-
 // Trade Data Dashboard Routes
 Route::prefix('dashboard')->name('dashboard.')->group(function () {
     
@@ -19,9 +15,13 @@ Route::prefix('dashboard')->name('dashboard.')->group(function () {
     Route::get('/', [TradeDashboardController::class, 'index'])
         ->name('trade-data');
     
-    // Jobs page
+    // Jobs page and actions
     Route::get('/jobs', [TradeDashboardController::class, 'showJobsPage'])
         ->name('jobs');
+    Route::post('/jobs/scrape', [JobDispatchController::class, 'scrape'])
+        ->name('jobs.scrape');
+    Route::get('/jobs/get-hs2-codes', [JobDispatchController::class, 'getHs2Codes'])
+        ->name('jobs.get-hs2-codes');
 
     // Export functionality
     Route::get('/export', [TradeDashboardController::class, 'export'])
@@ -40,4 +40,8 @@ Route::prefix('dashboard')->name('dashboard.')->group(function () {
     
     Route::get('/import-progress/{jobId}', [TradeDashboardController::class, 'getImportProgress'])
         ->name('import-progress');
+
+    // Scrape job progress
+    Route::get('/scrape-progress/{jobId}', [JobDispatchController::class, 'getScrapeProgress'])
+        ->name('scrape-progress');
 });

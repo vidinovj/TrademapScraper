@@ -62,8 +62,17 @@
                     <option value="250" {{ $perPage == 250 ? 'selected' : '' }}>250 per halaman</option>
                 </select>
             </div>
+
+            <div class="col-md-2">
+                <label for="hs_level" class="form-label fw-medium">HS Level</label>
+                <select class="form-select" name="hs_level" id="hs_level" onchange="this.form.submit()">
+                    <option value="2" {{ ($hsLevel ?? '2') == '2' ? 'selected' : '' }}>HS Level 2</option>
+                    <option value="4" {{ ($hsLevel ?? '2') == '4' ? 'selected' : '' }}>HS Level 4</option>
+                    <option value="6" {{ ($hsLevel ?? '2') == '6' ? 'selected' : '' }}>HS Level 6</option>
+                </select>
+            </div>
             
-            <div class="col-md-4">
+            <div class="col-md-2">
                 <div class="d-flex gap-2">
                     <button type="submit" class="btn btn-outline-primary">
                         <i class="fas fa-search me-1"></i> Cari
@@ -135,6 +144,10 @@
                                         </tr>
                                     </thead>
                                     <tbody>
+                                        @php
+                                            $currentLevel = (int) ($hsLevel ?? 2);
+                                            $nextLevel = $currentLevel + 2;
+                                        @endphp
                                         @forelse($tradeData as $item)
                                             <tr>
                                                 <td>
@@ -145,7 +158,13 @@
                                                     </button>
                                                 </td>
                                                 <td>
-                                                    <span class="hs-code">{{ $item->kode_hs }}</span>
+                                                    @if($currentLevel < 6)
+                                                        <a href="{{ route('dashboard.trade-data', array_merge(request()->except(['page']), ['hs_level' => $nextLevel, 'search_prefix' => $item->kode_hs, 'search' => ''])) }}" title="Drill down to HS Level {{ $nextLevel }}">
+                                                            <span class="hs-code">{{ $item->kode_hs }}</span>
+                                                        </a>
+                                                    @else
+                                                        <span class="hs-code">{{ $item->kode_hs }}</span>
+                                                    @endif
                                                 </td>
                                                 <td>
                                                     <div class="product-label">

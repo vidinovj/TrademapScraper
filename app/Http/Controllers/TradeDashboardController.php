@@ -20,6 +20,9 @@ class TradeDashboardController extends Controller
     {
         $perPage = $request->get('per_page', 25);
         $search = $request->get('search', '');
+        // Default to HS Level 2, and validate it's one of the allowed options.
+        $hsLevel = in_array($request->get('hs_level'), ['2', '4', '6']) ? $request->get('hs_level') : '2';
+        $searchPrefix = $request->get('search_prefix', '');
         
         // Get aggregated trade data by HS code with yearly breakdown
         $query = TbTrade::select([
@@ -41,6 +44,15 @@ class TradeDashboardController extends Controller
                   ->orWhere('label', 'LIKE', "%{$search}%");
             });
         }
+
+        // Apply prefix search for drill-down
+        if (!empty($searchPrefix)) {
+            $query->where('kode_hs', 'LIKE', $searchPrefix . '%');
+        }
+        
+        // Always apply HS level filter
+        $level = (int) $hsLevel;
+        $query->where(DB::raw("LENGTH(REPLACE(kode_hs, '.', ''))"), $level);
         
         // Order by total value descending (show highest imports first)
         $query->orderByDesc('total_value');
@@ -52,7 +64,7 @@ class TradeDashboardController extends Controller
         
         // Get top sectors for additional insights
         $topSectors = $this->getTopSectors();
-        $treemapData = $this->getTreemapData();
+        $treemapData = $this->getTreemapData($hsLevel, $searchPrefix);
         
         return view('dashboard.trade-data', compact(
             'tradeData', 
@@ -60,7 +72,9 @@ class TradeDashboardController extends Controller
             'topSectors',
             'treemapData',
             'search',
-            'perPage'
+            'perPage',
+            'hsLevel',
+            'searchPrefix'
         ));
     }
     
@@ -93,7 +107,7 @@ class TradeDashboardController extends Controller
     /**
      * Get data for the treemap chart (top 20 products by value in 2024)
      */
-    private function getTreemapData()
+    private function getTreemapData(string $hsLevel = '2', ?string $searchPrefix = null)
     {
         $totalImports2024 = TbTrade::where('tahun', 2024)->sum('jumlah');
 
@@ -101,16 +115,24 @@ class TradeDashboardController extends Controller
             return collect(); // Return empty collection if total is zero
         }
 
-        $topProducts = TbTrade::select([
+        $query = TbTrade::select([
             'kode_hs as x',
             DB::raw('SUM(jumlah) as y'),
             DB::raw('MAX(label) as full_label')
         ])
         ->where('tahun', 2024)
-        ->groupBy('kode_hs')
-        ->orderByDesc('y')
-        ->limit(20)
-        ->get();
+        ->groupBy('kode_hs');
+
+        $level = (int) $hsLevel;
+        $query->where(DB::raw("LENGTH(REPLACE(kode_hs, '.', ''))"), $level);
+
+        if (!empty($searchPrefix)) {
+            $query->where('kode_hs', 'LIKE', $searchPrefix . '%');
+        }
+
+        $topProducts = $query->orderByDesc('y')
+            ->limit(20)
+            ->get();
 
         // Add share_percentage to each product
         return $topProducts->map(function ($product) use ($totalImports2024) {

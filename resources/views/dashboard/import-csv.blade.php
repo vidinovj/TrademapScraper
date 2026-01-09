@@ -3,6 +3,8 @@
 @section('title', 'Import CSV - Trade Data Dashboard')
 
 @section('content')
+@include('components.trade-ticker')
+
 <div class="container mx-auto px-4" style="padding-top: 1.5rem;">
     <!-- Header -->
     <div class="row mb-4">

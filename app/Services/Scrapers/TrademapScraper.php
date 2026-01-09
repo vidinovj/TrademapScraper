@@ -20,12 +20,12 @@ class TrademapScraper
         ];
     }
 
-    public function scrapeIndonesiaTradeData(): array
+    public function scrapeIndonesiaTradeData(string $productCode = 'TOTAL'): array
     {
-        Log::info('Starting Trademap scraping');
+        Log::info("Starting Trademap scraping for product code: {$productCode}");
         
         try {
-            $url = $this->buildTrademapUrl();
+            $url = $this->buildTrademapUrl($productCode);
             $allYearsData = $this->executePuppeteerScraping($url);
             
             return $this->processMultiYearData($allYearsData);
@@ -36,11 +36,12 @@ class TrademapScraper
         }
     }
 
-    protected function buildTrademapUrl(): string
+    protected function buildTrademapUrl(string $productCode = 'TOTAL'): string
     {
         $baseUrl = 'https://www.trademap.org/Product_SelCountry_TS.aspx';
+        $nvpm = "1|360||||{$productCode}|||2|1|1|1|2|1|1|1||1";
         $params = [
-            'nvpm' => '1|360||||TOTAL|||2|1|1|1|2|1|1|1||1',
+            'nvpm' => $nvpm,
             'dlang' => 'en'
         ];
         
@@ -222,12 +223,12 @@ class TrademapScraper
         }
     }
 
-    public function execute(): array
+    public function execute(string $productCode = 'TOTAL'): array
     {
         $startTime = microtime(true);
         
         try {
-            $tradeData = $this->scrapeIndonesiaTradeData();
+            $tradeData = $this->scrapeIndonesiaTradeData($productCode);
             
             if (empty($tradeData)) {
                 return [
