@@ -120,7 +120,13 @@ class TrademapScraper
         Log::info("Processing " . count($scrapedData) . " records");
         
         $processedData = [];
-        $years = [2020, 2021, 2022, 2023, 2024];
+        // Dynamic years: Current Year down to Current Year - 4
+        $currentYear = (int) date('Y');
+        $years = [];
+        for ($y = $currentYear; $y >= $currentYear - 4; $y--) {
+            $years[] = $y;
+        }
+        
         $skippedCount = 0;
         
         foreach ($scrapedData as $item) {
@@ -242,13 +248,20 @@ class TrademapScraper
             $recordsSaved = $this->saveToDatabase($tradeData);
             $executionTime = microtime(true) - $startTime;
             
+            // Dynamic years list for response
+            $currentYear = (int) date('Y');
+            $processedYears = [];
+            for ($y = $currentYear; $y >= $currentYear - 4; $y--) {
+                $processedYears[] = $y;
+            }
+            
             return [
                 'success' => true,
                 'message' => 'Scraping completed successfully',
                 'records_scraped' => count($tradeData),
                 'records_saved' => $recordsSaved,
                 'execution_time' => round($executionTime, 2),
-                'years_processed' => [2020, 2021, 2022, 2023, 2024]
+                'years_processed' => $processedYears
             ];
             
         } catch (Exception $e) {

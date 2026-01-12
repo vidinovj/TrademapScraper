@@ -24,18 +24,32 @@ class TradeDashboardController extends Controller
         $hsLevel = in_array($request->get('hs_level'), ['2', '4', '6']) ? $request->get('hs_level') : '2';
         $searchPrefix = $request->get('search_prefix', '');
         
-        // Get aggregated trade data by HS code with yearly breakdown
-        $query = TbTrade::select([
+        // Smart Year Detection: Anchor to the latest data in the DB
+        $maxYearInDb = (int) TbTrade::max('tahun');
+        
+        // Fallback to 2024 if DB is empty or max year is strangely low, 
+        // ensuring we show the dataset the user expects (2020-2024) until new data arrives.
+        $targetYear = ($maxYearInDb > 2020) ? $maxYearInDb : 2024;
+        
+        $years = [];
+        for ($y = $targetYear - 4; $y <= $targetYear; $y++) {
+            $years[] = $y;
+        }
+        
+        // Build Select Statement Dynamically
+        $selects = [
             'kode_hs',
-            DB::raw('MAX(label) as product_label'),
-            DB::raw('SUM(CASE WHEN tahun = 2020 THEN jumlah ELSE 0 END) as value_2020'),
-            DB::raw('SUM(CASE WHEN tahun = 2021 THEN jumlah ELSE 0 END) as value_2021'),
-            DB::raw('SUM(CASE WHEN tahun = 2022 THEN jumlah ELSE 0 END) as value_2022'),
-            DB::raw('SUM(CASE WHEN tahun = 2023 THEN jumlah ELSE 0 END) as value_2023'),
-            DB::raw('SUM(CASE WHEN tahun = 2024 THEN jumlah ELSE 0 END) as value_2024'),
-            DB::raw('SUM(jumlah) as total_value')
-        ])
-        ->groupBy('kode_hs');
+            DB::raw('MAX(label) as product_label')
+        ];
+        
+        foreach ($years as $year) {
+            $selects[] = DB::raw("SUM(CASE WHEN tahun = {$year} THEN jumlah ELSE 0 END) as value_{$year}");
+        }
+        
+        $selects[] = DB::raw('SUM(jumlah) as total_value');
+
+        // Get aggregated trade data by HS code with yearly breakdown
+        $query = TbTrade::select($selects)->groupBy('kode_hs');
         
         // Apply search filter
         if (!empty($search)) {
@@ -60,11 +74,11 @@ class TradeDashboardController extends Controller
         $tradeData = $query->paginate($perPage);
         
         // Get summary statistics for Pustik-style cards
-        $summaryStats = $this->getSummaryStatistics();
+        $summaryStats = $this->getSummaryStatistics($targetYear);
         
         // Get top sectors for additional insights (dynamic based on current level)
-        $topSectors = $this->getTopSectors($hsLevel, $searchPrefix);
-        $treemapData = $this->getTreemapData($hsLevel, $searchPrefix);
+        $topSectors = $this->getTopSectors($hsLevel, $searchPrefix, $targetYear);
+        $treemapData = $this->getTreemapData($hsLevel, $searchPrefix, $targetYear);
         
         return view('dashboard.trade-data', compact(
             'tradeData', 
@@ -74,7 +88,9 @@ class TradeDashboardController extends Controller
             'search',
             'perPage',
             'hsLevel',
-            'searchPrefix'
+            'searchPrefix',
+            'years',
+            'targetYear' // Renaming for clarity, view can use $targetYear or $years array
         ));
     }
     
@@ -89,29 +105,43 @@ class TradeDashboardController extends Controller
     /**
      * Get summary statistics for the dashboard
      */
-    private function getSummaryStatistics()
+    private function getSummaryStatistics(int $targetYear)
     {
         $totalRecords = TbTrade::count();
-        $totalValue2024 = TbTrade::where('tahun', 2024)->sum('jumlah');
+        // Use the target year (current year) for total value
+        $totalValueYear = TbTrade::where('tahun', $targetYear)->sum('jumlah');
+        
+        // Fallback: If current year has 0 data, try previous year
+        if ($totalValueYear == 0) {
+            $targetYear--;
+            $totalValueYear = TbTrade::where('tahun', $targetYear)->sum('jumlah');
+        }
+
         $totalHsCodes = TbTrade::distinct('kode_hs')->count();
         $lastUpdate = TbTrade::latest('scraped_at')->first()?->scraped_at;
         
         return [
             'total_records' => $totalRecords,
-            'total_value_2024' => $totalValue2024,
+            'total_value_year' => $totalValueYear,
+            'display_year' => $targetYear,
             'total_hs_codes' => $totalHsCodes,
             'last_update' => $lastUpdate
         ];
     }
 
     /**
-     * Get data for the treemap chart (top 20 products by value in 2024)
+     * Get data for the treemap chart (top 20 products by value in current year)
      */
-    private function getTreemapData(string $hsLevel = '2', ?string $searchPrefix = null)
+    private function getTreemapData(string $hsLevel, ?string $searchPrefix, int $year)
     {
-        $totalImports2024 = TbTrade::where('tahun', 2024)->sum('jumlah');
+        // Try current year, fallback to previous if empty
+        $totalImports = TbTrade::where('tahun', $year)->sum('jumlah');
+        if ($totalImports == 0) {
+            $year--;
+            $totalImports = TbTrade::where('tahun', $year)->sum('jumlah');
+        }
 
-        if ($totalImports2024 == 0) {
+        if ($totalImports == 0) {
             return collect(); // Return empty collection if total is zero
         }
 
@@ -120,7 +150,7 @@ class TradeDashboardController extends Controller
             DB::raw('SUM(jumlah) as y'),
             DB::raw('MAX(label) as full_label')
         ])
-        ->where('tahun', 2024)
+        ->where('tahun', $year)
         ->groupBy('kode_hs');
 
         $level = (int) $hsLevel;
@@ -135,8 +165,8 @@ class TradeDashboardController extends Controller
             ->get();
 
         // Add share_percentage to each product
-        return $topProducts->map(function ($product) use ($totalImports2024) {
-            $product->share_percentage = ($product->y / $totalImports2024) * 100;
+        return $topProducts->map(function ($product) use ($totalImports) {
+            $product->share_percentage = ($product->y / $totalImports) * 100;
             return $product;
         });
     }
@@ -144,11 +174,16 @@ class TradeDashboardController extends Controller
     /**
      * Get top trading sectors/products dynamic to the current view
      */
-    private function getTopSectors(string $hsLevel = '2', ?string $searchPrefix = null)
+    private function getTopSectors(string $hsLevel, ?string $searchPrefix, int $year)
     {
-        $totalImports2024 = TbTrade::where('tahun', 2024)->sum('jumlah');
+        // Try current year, fallback to previous if empty
+        $totalImports = TbTrade::where('tahun', $year)->sum('jumlah');
+        if ($totalImports == 0) {
+            $year--;
+            $totalImports = TbTrade::where('tahun', $year)->sum('jumlah');
+        }
 
-        if ($totalImports2024 == 0) {
+        if ($totalImports == 0) {
             return collect();
         }
 
@@ -158,7 +193,7 @@ class TradeDashboardController extends Controller
             DB::raw('SUM(jumlah) as total_value'),
             DB::raw('COUNT(*) as record_count')
         ])
-        ->where('tahun', 2024);
+        ->where('tahun', $year);
 
         // Filter by Level
         $level = (int) $hsLevel;
@@ -175,8 +210,8 @@ class TradeDashboardController extends Controller
             ->get();
 
         // Add share_percentage to each sector
-        return $topSectors->map(function ($sector) use ($totalImports2024) {
-            $sector->share_percentage = ($sector->total_value / $totalImports2024) * 100;
+        return $topSectors->map(function ($sector) use ($totalImports) {
+            $sector->share_percentage = ($sector->total_value / $totalImports) * 100;
             return $sector;
         });
     }

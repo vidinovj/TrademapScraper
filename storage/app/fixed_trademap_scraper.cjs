@@ -110,6 +110,17 @@ async function scrapeTrademapDataFixed(url) {
             let headerRowIndex = -1;
             let headerCells = [];
             
+            // Dynamic year calculation (Current Year down to Current Year - 4)
+            const currentYear = new Date().getFullYear();
+            // Trade data often lags by 1 year, so we check for current year and previous years
+            // Adjust this if you want to strictly look for last 5 completed years (e.g., currentYear - 1 down to currentYear - 5)
+            // For now, we look for [currentYear, currentYear-1, ..., currentYear-4]
+            const targetYears = [];
+            for (let y = currentYear; y >= currentYear - 4; y--) {
+                targetYears.push(y);
+            }
+            console.log(`📅 Target years: ${targetYears.join(', ')}`);
+
             // Check first few rows to find the one with meaningful headers
             for (let i = 0; i < Math.min(3, rows.length); i++) {
                 const row = rows[i];
@@ -126,13 +137,14 @@ async function scrapeTrademapDataFixed(url) {
                     rowHeaders.push(cellText);
                     console.log(`  Cell ${j}: "${cellText}"`);
                     
-                    // Check for year headers
-                    if (cellText.includes('2020') || 
-                        cellText.includes('2021') ||
-                        cellText.includes('2022') ||
-                        cellText.includes('2023') ||
-                        cellText.includes('2024') ||
-                        cellText.includes('Imported value')) {
+                    // Check for year headers (dynamically)
+                    for (const year of targetYears) {
+                        if (cellText.includes(year.toString())) {
+                            hasYearHeaders = true;
+                            break;
+                        }
+                    }
+                    if (cellText.includes('Imported value')) {
                         hasYearHeaders = true;
                     }
                     
@@ -163,13 +175,13 @@ async function scrapeTrademapDataFixed(url) {
             // Map column indices based on the REAL headers
             const columnMapping = {
                 hsCode: -1,
-                productLabel: -1,
-                value2020: -1,
-                value2021: -1,
-                value2022: -1,
-                value2023: -1,
-                value2024: -1
+                productLabel: -1
             };
+            
+            // Initialize dynamic year mappings
+            targetYears.forEach(year => {
+                columnMapping[`value${year}`] = -1;
+            });
             
             console.log('🗺️  Mapping columns from REAL headers:');
             
@@ -179,27 +191,13 @@ async function scrapeTrademapDataFixed(url) {
                 
                 console.log(`  Column ${i}: "${headerText}"`);
                 
-                // Map year columns
-                if (headerText.includes('2020') || headerLower.includes('2020')) {
-                    columnMapping.value2020 = i;
-                    console.log(`    ✅ MAPPED 2020 column at index ${i}`);
-                }
-                if (headerText.includes('2021') || headerLower.includes('2021')) {
-                    columnMapping.value2021 = i;
-                    console.log(`    ✅ MAPPED 2021 column at index ${i}`);
-                }
-                if (headerText.includes('2022') || headerLower.includes('2022')) {
-                    columnMapping.value2022 = i;
-                    console.log(`    ✅ MAPPED 2022 column at index ${i}`);
-                }
-                if (headerText.includes('2023') || headerLower.includes('2023')) {
-                    columnMapping.value2023 = i;
-                    console.log(`    ✅ MAPPED 2023 column at index ${i}`);
-                }
-                if (headerText.includes('2024') || headerLower.includes('2024')) {
-                    columnMapping.value2024 = i;
-                    console.log(`    ✅ MAPPED 2024 column at index ${i}`);
-                }
+                // Map year columns dynamically
+                targetYears.forEach(year => {
+                    if (headerText.includes(year.toString()) || headerLower.includes(year.toString())) {
+                        columnMapping[`value${year}`] = i;
+                        console.log(`    ✅ MAPPED ${year} column at index ${i}`);
+                    }
+                });
                 
                 // Map HS Code column
                 if (headerLower.includes('hs') || headerLower.includes('code')) {
@@ -218,11 +216,11 @@ async function scrapeTrademapDataFixed(url) {
             console.log(JSON.stringify(columnMapping, null, 2));
 
             // Count successful mappings
-            const yearColumnsFound = [2020, 2021, 2022, 2023, 2024].filter(year => 
+            const yearColumnsFound = targetYears.filter(year => 
                 columnMapping[`value${year}`] >= 0
             ).length;
             
-            console.log(`📅 Year columns mapped: ${yearColumnsFound}/5`);
+            console.log(`📅 Year columns mapped: ${yearColumnsFound}/${targetYears.length}`);
 
             const results = [];
             
@@ -271,9 +269,9 @@ async function scrapeTrademapDataFixed(url) {
                     }
                 }
 
-                // Extract values for ALL years
+                // Extract values for ALL dynamic years
                 const values = {};
-                [2020, 2021, 2022, 2023, 2024].forEach(year => {
+                targetYears.forEach(year => {
                     const columnIndex = columnMapping[`value${year}`];
                     if (columnIndex >= 0 && columnIndex < cells.length) {
                         const valueText = cleanText(cells[columnIndex].textContent);
@@ -296,17 +294,12 @@ async function scrapeTrademapDataFixed(url) {
                     const record = {
                         hsCode: hsCode || 'N/A',
                         productLabel: productLabel,
-                        value2020: values.value2020,
-                        value2021: values.value2021,
-                        value2022: values.value2022,
-                        value2023: values.value2023,
-                        value2024: values.value2024,
-                        rowIndex: i
+                        rowIndex: i,
+                        ...values // Spread the dynamic year values
                     };
 
                     results.push(record);
                     console.log(`✅ Added record: ${hsCode || 'N/A'} - ${productLabel.substring(0, 30)}...`);
-                    console.log(`   Values: [2020:${values.value2020}, 2021:${values.value2021}, 2022:${values.value2022}, 2023:${values.value2023}, 2024:${values.value2024}]`);
                 } else {
                     console.log(`❌ Skipped record: hsCode="${hsCode}", label="${productLabel}", isTotal=${!isNotTotal}`);
                 }

@@ -17,8 +17,8 @@
         </div>
         <div class="col-md-3">
             <div class="stat-card green">
-                <h3>${{ number_format($summaryStats['total_value_2024'] / 1000000, 1) }}B</h3>
-                <p><i class="fas fa-chart-line me-1"></i> Nilai Impor 2024</p>
+                <h3>${{ number_format($summaryStats['total_value_year'] / 1000000, 1) }}B</h3>
+                <p><i class="fas fa-chart-line me-1"></i> Nilai Impor {{ $summaryStats['display_year'] }}</p>
             </div>
         </div>
         <div class="col-md-3">
@@ -145,7 +145,7 @@
                 <div class="card-header">
                     <h5 class="mb-0 fw-bold">
                         <i class="fas fa-chart-pie me-2"></i>
-                        Top Sektor (2024)
+                        Top Sektor ({{ $targetYear }})
                     </h5>
                 </div>
                 <div class="card-body p-0" style="max-height: 400px; overflow-y: auto;">
@@ -212,11 +212,9 @@
                                             <th style="width: 60px;">HS4</th>
                                             <th style="width: 65px;">Kode</th>
                                             <th style="min-width: 200px;">Label Produk</th>
-                                            <th style="width: 100px;" class="text-end">Nilai impor<br>tahun 2020</th>
-                                            <th style="width: 100px;" class="text-end">Nilai impor<br>tahun 2021</th>
-                                            <th style="width: 100px;" class="text-end">Nilai impor<br>tahun 2022</th>
-                                            <th style="width: 100px;" class="text-end">Nilai impor<br>tahun 2023</th>
-                                            <th style="width: 100px;" class="text-end">Nilai impor<br>tahun 2024</th>
+                                            @foreach($years as $year)
+                                                <th style="width: 100px;" class="text-end">Nilai impor<br>tahun {{ $year }}</th>
+                                            @endforeach
                                             <th style="width: 80px;">Trend (5Y)</th>
                                         </tr>
                                     </thead>
@@ -247,32 +245,37 @@
                                                         @endif
                                                     </div>
                                                 </td>
-                                                <td class="value-cell">
-                                                    {{ $item->value_2020 > 0 ? number_format($item->value_2020) : '-' }}
-                                                </td>
-                                                <td class="value-cell">
-                                                    {{ $item->value_2021 > 0 ? number_format($item->value_2021) : '-' }}
-                                                </td>
-                                                <td class="value-cell">
-                                                    {{ $item->value_2022 > 0 ? number_format($item->value_2022) : '-' }}
-                                                </td>
-                                                <td class="value-cell">
-                                                    {{ $item->value_2023 > 0 ? number_format($item->value_2023) : '-' }}
-                                                </td>
-                                                <td class="value-cell">
-                                                    <strong style="color: var(--pustik-primary);">
-                                                        {{ $item->value_2024 > 0 ? number_format($item->value_2024) : '-' }}
-                                                    </strong>
-                                                </td>
+                                                
+                                                @foreach($years as $year)
+                                                    @php
+                                                        $val = $item->{'value_'.$year} ?? 0;
+                                                    @endphp
+                                                    <td class="value-cell">
+                                                        @if($year == $targetYear)
+                                                            <strong style="color: var(--pustik-primary);">
+                                                                {{ $val > 0 ? number_format($val) : '-' }}
+                                                            </strong>
+                                                        @else
+                                                            {{ $val > 0 ? number_format($val) : '-' }}
+                                                        @endif
+                                                    </td>
+                                                @endforeach
+                                                
                                                 <td>
+                                                    @php
+                                                        $chartValues = [];
+                                                        foreach($years as $year) {
+                                                            $chartValues[] = $item->{'value_'.$year} ?? 0;
+                                                        }
+                                                    @endphp
                                                     <div id="sparkline-{{ str_replace('.', '-', $item->kode_hs) }}" 
                                                          class="sparkline-chart"
-                                                         data-values="{{ json_encode([$item->value_2020, $item->value_2021, $item->value_2022, $item->value_2023, $item->value_2024]) }}"></div>
+                                                         data-values="{{ json_encode($chartValues) }}"></div>
                                                 </td>
                                             </tr>
                                         @empty
                                             <tr>
-                                                <td colspan="9" class="text-center py-4">
+                                                <td colspan="{{ count($years) + 4 }}" class="text-center py-4">
                                                     <div class="text-muted">
                                                         <i class="fas fa-inbox display-1"></i>
                                                         <h5 class="mt-3">Tidak ada data perdagangan ditemukan</h5>
@@ -565,7 +568,7 @@
                             };
 
                             // Add years to x-axis for tooltip if needed, but not visible
-                            sparklineOptions.xaxis.categories = ['2020', '2021', '2022', '2023', '2024'];
+                            sparklineOptions.xaxis.categories = @json(array_map('strval', $years));
 
                             var sparklineChart = new ApexCharts(chartElement, sparklineOptions);
                             sparklineChart.render();

@@ -7,13 +7,13 @@ Aplikasi web yang dibuat dengan Laravel untuk mengikis (scrape), memproses, dan 
 Aplikasi ini sedang dalam tahap pengembangan menengah dan memiliki beberapa kemampuan utama:
 
 ### 1. Scraper Data Trademap
-- **Scraper Otomatis**: Terdapat command `php artisan scrape:trademap-data` untuk mengikis data langsung dari situs Trademap.
-- **Logika Scraper**: Logika scraper utama berada di `app/Services/Scrapers/TrademapScraper.php`.
+- **Scraper Otomatis**: Terdapat command `php artisan scrape:trademap` untuk mengikis data langsung dari situs Trademap.
+- **Logika Scraper**: Logika scraper utama berada di `app/Services/Scrapers/TrademapScraper.php`. Menggunakan Puppeteer untuk ekstraksi data yang kuat dan dinamis.
+- **Dukungan Tahun Dinamis**: Scraper secara otomatis mendeteksi dan mengambil data untuk 5 tahun terakhir (hingga tahun berjalan), memastikan data tetap relevan tanpa perlu update kode manual.
 
 ### 2. Dashboard Visualisasi Data
-- **Tampilan Data**: Dashboard sederhana untuk menampilkan data perdagangan yang telah diproses. Dapat diakses melalui route `/dashboard/trade-data`.
-- **Controller**: Dikelola oleh `TradeDashboardController.php`.
-- **Views**: Menggunakan komponen Blade seperti `trade-data.blade.php`.
+- **Tampilan Data**: Dashboard interaktif bergaya "Pustik" untuk memvisualisasikan data perdagangan. Dapat diakses melalui route `/dashboard`.
+- **Dinamis Berbasis Data**: Dashboard secara otomatis menyesuaikan tampilan (kolom tahun, chart, tren) berdasarkan data terbaru yang tersedia di database.
 
 ### 3. Impor Data
 - **Impor CSV**: Memiliki fungsionalitas untuk mengimpor data dari file CSV melalui antarmuka web.
@@ -23,8 +23,9 @@ Aplikasi ini sedang dalam tahap pengembangan menengah dan memiliki beberapa kema
 - **Trade Ticker**: Menyediakan endpoint API di `/api/trade-ticker` untuk menyajikan data perdagangan dalam format JSON, cocok untuk integrasi dengan _frontend framework_ atau aplikasi lain.
 
 ### 5. Manajemen Data
-- **Model Eloquent**: Menggunakan model `TabelPerdagangan` dan `TbTrade` untuk berinteraksi dengan database.
-- **Migrasi Database**: Skema database untuk tabel perdagangan (`tb_trade`) telah didefinisikan dalam file migrasi.
+- **Model Eloquent**: Menggunakan model `TbTrade` untuk berinteraksi dengan database secara efisien.
+- **Migrasi Database**: Skema database untuk tabel perdagangan (`tb_trade`) telah dioptimalkan dengan indeks untuk performa query yang tinggi.
+- **Otomatisasi**: Scraper dijadwalkan berjalan secara otomatis setiap minggu untuk memastikan integritas data jangka panjang.
 
 ### 6. Pemicu Job Via Web
 - **Antarmuka Web**: Kemampuan untuk memicu (dispatch) job di latar belakang (background tasks) seperti scraping data dari antarmuka web, tanpa perlu akses langsung ke terminal.
