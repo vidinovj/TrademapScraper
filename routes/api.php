@@ -42,6 +42,11 @@ Route::prefix('ticker')->name('api.ticker.')->group(function () {
 Route::get('/trade-data-latest', [TradeTickerController::class, 'getLatestTradeData'])
     ->name('api.trade-data-latest');
 
+// Documentation endpoint
+Route::get('/trade-ticker', [TradeTickerController::class, 'getLatestTradeData'])
+    ->name('api.trade-ticker');
+
+
 // Get trade data as JSON (for AJAX)
 Route::get('/trade-data', function () {
     return response()->json([
