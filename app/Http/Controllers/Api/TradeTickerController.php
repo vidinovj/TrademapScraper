@@ -43,53 +43,53 @@ class TradeTickerController extends Controller
      */
     private function fetchLatestTrades()
     {
-        $subQuery = TbTrade::select([
-            'kode_hs',
-            'label',
-            'jumlah',
-            'tahun',
-            'scraped_at',
-            DB::raw('ROW_NUMBER() OVER (PARTITION BY kode_hs ORDER BY scraped_at DESC) as rn')
-        ])->where('scraped_at', '>=', now()->subHours(24));
+        // 1. Determine the latest year that actually has data (anchored to reality)
+        // We look for the max year where the sum of trade values is > 0
+        $latestYear = TbTrade::where('jumlah', '>', 0)->max('tahun') ?? 2024;
+        $previousYear = $latestYear - 1;
 
-        $latestTrades = DB::table(DB::raw("({$subQuery->toSql()}) as sub"))
-            ->mergeBindings($subQuery->getQuery())
-            ->where('rn', '=', 1)
-            ->orderBy('scraped_at', 'desc')
-            ->limit(15)
-            ->get();
-        
-        // If no recent data, get top traded items from latest year
-        if ($latestTrades->isEmpty()) {
-            $latestTrades = TbTrade::select([
+        // 2. Fetch top trades for this specific year
+        // We focus on the highest value items to make the ticker interesting
+        $trades = TbTrade::select([
                 'kode_hs',
                 'label',
                 'jumlah as nilai',
                 'tahun',
                 'scraped_at'
             ])
-            ->where('tahun', 2024)
+            ->where('tahun', $latestYear)
+            ->where('jumlah', '>', 0) // Ensure we don't pick up empty placeholders
             ->orderBy('jumlah', 'desc')
-            ->limit(10)
-            ->get()
-            ->map(function ($trade) {
-                $trade->change_percent = rand(-5, 15); // Simulate change for demo
-                return $trade;
-            });
-        } else {
-            // Calculate percentage changes for items with historical data
-            $latestTrades = $latestTrades->map(function ($trade) {
-                $trade->change_percent = $this->calculateChangePercent($trade->kode_hs);
-                return $trade;
-            });
+            ->limit(15)
+            ->get();
+
+        if ($trades->isEmpty()) {
+            return [];
         }
-        
-        return $latestTrades->map(function ($trade) {
+
+        // 3. Calculate percentage changes by looking up the previous year's data
+        return $trades->map(function ($trade) use ($previousYear) {
+            
+            $previousValue = TbTrade::where('kode_hs', $trade->kode_hs)
+                ->where('tahun', $previousYear)
+                ->value('jumlah');
+
+            $changePercent = 0;
+            
+            if ($previousValue && $previousValue > 0) {
+                $changePercent = (($trade->nilai - $previousValue) / $previousValue) * 100;
+            } else {
+                // If no previous data, we can't calculate a real change. 
+                // Return 0 or maybe a small random indicator if we want to simulate liveliness (optional),
+                // but 0 is safer for accuracy.
+                $changePercent = 0; 
+            }
+
             return [
                 'kode_hs' => $trade->kode_hs,
                 'label' => $trade->label,
-                'nilai' => $trade->nilai ?? $trade->jumlah,
-                'change_percent' => $trade->change_percent ?? 0,
+                'nilai' => $trade->nilai,
+                'change_percent' => round($changePercent, 1),
                 'scraped_at' => Carbon::parse($trade->scraped_at)->format('H:i')
             ];
         })->toArray();
@@ -97,25 +97,12 @@ class TradeTickerController extends Controller
     
     /**
      * Calculate percentage change for a specific HS code
+     * (Deprecated/Unused in new logic but kept if needed for individual lookups)
      */
     private function calculateChangePercent($hsCode)
     {
-        $recentValues = TbTrade::where('kode_hs', $hsCode)
-            ->orderBy('scraped_at', 'desc')
-            ->limit(2)
-            ->pluck('jumlah');
-        
-        if ($recentValues->count() < 2) {
-            return rand(-3, 8); // Random change for demo purposes
-        }
-        
-        $current = $recentValues->first();
-        $previous = $recentValues->last();
-        
-        if ($previous == 0) return 0;
-        
-        $change = (($current - $previous) / $previous) * 100;
-        return round($change, 1);
+        // Logic moved inside fetchLatestTrades for batch efficiency
+        return 0;
     }
     
     /**

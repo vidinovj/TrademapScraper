@@ -10,7 +10,7 @@
         "build": "vite build",
         "dev": "vite",
         "install-puppeteer": "npm install puppeteer",
-        "test-scraper": "node storage/app/trademap_scraper.js"
+        "test-scraper": "node storage/app/fixed_trademap_scraper.cjs"
     },
     "dependencies": {
         "puppeteer": "^21.0.0"

@@ -24,8 +24,9 @@ class TradeDashboardController extends Controller
         $hsLevel = in_array($request->get('hs_level'), ['2', '4', '6']) ? $request->get('hs_level') : '2';
         $searchPrefix = $request->get('search_prefix', '');
         
-        // Smart Year Detection: Anchor to the latest data in the DB
-        $maxYearInDb = (int) TbTrade::max('tahun');
+        // Smart Year Detection: Anchor to the latest data in the DB with actual values
+        // We filter for years that have at least one record with non-zero value to avoid anchoring to empty future years
+        $maxYearInDb = (int) TbTrade::where('jumlah', '>', 0)->max('tahun');
         
         // Fallback to 2024 if DB is empty or max year is strangely low, 
         // ensuring we show the dataset the user expects (2020-2024) until new data arrives.
