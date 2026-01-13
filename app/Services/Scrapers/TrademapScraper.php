@@ -139,7 +139,12 @@ class TrademapScraper
             
             if ($isValid) {
                 foreach ($years as $year) {
-                    $value = $item["value{$year}"] ?? 0;
+                    // Check if the key exists and is not null (distinguish between 0 and missing)
+                    if (!array_key_exists("value{$year}", $item) || $item["value{$year}"] === null) {
+                        continue; // Skip years that weren't found in the scrape (preserve historical data)
+                    }
+
+                    $value = $item["value{$year}"];
                     $importedValue = is_numeric($value) ? (float)$value : 0.0;
                     
                     $processedData[] = [

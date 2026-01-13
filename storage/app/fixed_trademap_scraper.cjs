@@ -277,8 +277,8 @@ async function scrapeTrademapDataFixed(url) {
                         values[`value${year}`] = extractNumericValue(valueText);
                         console.log(`  ${year} from col ${columnIndex}: "${valueText}" = ${values[`value${year}`]}`);
                     } else {
-                        values[`value${year}`] = 0;
-                        console.log(`  ${year}: column not mapped, using 0`);
+                        values[`value${year}`] = null; // Return null if column is missing (don't overwrite DB with 0)
+                        console.log(`  ${year}: column not mapped, using null`);
                     }
                 });
 
