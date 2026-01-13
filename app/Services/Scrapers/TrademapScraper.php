@@ -120,10 +120,11 @@ class TrademapScraper
         Log::info("Processing " . count($scrapedData) . " records");
         
         $processedData = [];
-        // Dynamic years: Current Year down to Current Year - 4
+        // Dynamic years: Current Year down to Current Year - 6 (7 years total)
+        // This ensures we capture historical data (e.g. 2020) even if we are in 2026 but data stops at 2024.
         $currentYear = (int) date('Y');
         $years = [];
-        for ($y = $currentYear; $y >= $currentYear - 4; $y--) {
+        for ($y = $currentYear; $y >= $currentYear - 6; $y--) {
             $years[] = $y;
         }
         
@@ -251,7 +252,7 @@ class TrademapScraper
             // Dynamic years list for response
             $currentYear = (int) date('Y');
             $processedYears = [];
-            for ($y = $currentYear; $y >= $currentYear - 4; $y--) {
+            for ($y = $currentYear; $y >= $currentYear - 6; $y--) {
                 $processedYears[] = $y;
             }
             

@@ -28,13 +28,24 @@ class TradeDashboardController extends Controller
         // We filter for years that have at least one record with non-zero value to avoid anchoring to empty future years
         $maxYearInDb = (int) TbTrade::where('jumlah', '>', 0)->max('tahun');
         
-        // Fallback to 2024 if DB is empty or max year is strangely low, 
-        // ensuring we show the dataset the user expects (2020-2024) until new data arrives.
+        // Fallback to 2024 if DB is empty or max year is strangely low
         $targetYear = ($maxYearInDb > 2020) ? $maxYearInDb : 2024;
         
-        $years = [];
-        for ($y = $targetYear - 4; $y <= $targetYear; $y++) {
-            $years[] = $y;
+        // Dynamic Range: Only show years that actually have data within the last 5 years
+        // This hides empty columns (like 2020/2021) if the scraper only found data for 2022-2024
+        $availableYears = TbTrade::where('jumlah', '>', 0)
+            ->whereBetween('tahun', [$targetYear - 4, $targetYear])
+            ->distinct()
+            ->pluck('tahun')
+            ->sort()
+            ->values()
+            ->all();
+
+        // If no data found (e.g. fresh install), default to the standard 5-year range ending in targetYear
+        if (empty($availableYears)) {
+            $years = range($targetYear - 4, $targetYear);
+        } else {
+            $years = $availableYears;
         }
         
         // Build Select Statement Dynamically

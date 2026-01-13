@@ -110,13 +110,12 @@ async function scrapeTrademapDataFixed(url) {
             let headerRowIndex = -1;
             let headerCells = [];
             
-            // Dynamic year calculation (Current Year down to Current Year - 4)
+            // Dynamic year calculation (Current Year down to Current Year - 6)
             const currentYear = new Date().getFullYear();
-            // Trade data often lags by 1 year, so we check for current year and previous years
-            // Adjust this if you want to strictly look for last 5 completed years (e.g., currentYear - 1 down to currentYear - 5)
-            // For now, we look for [currentYear, currentYear-1, ..., currentYear-4]
+            // Trade data often lags by 1-2 years, so we check further back to ensure we cover the "Last 5 Valid Years" window
+            // If today is 2026, we look back to 2020.
             const targetYears = [];
-            for (let y = currentYear; y >= currentYear - 4; y--) {
+            for (let y = currentYear; y >= currentYear - 6; y--) {
                 targetYears.push(y);
             }
             console.log(`📅 Target years: ${targetYears.join(', ')}`);
